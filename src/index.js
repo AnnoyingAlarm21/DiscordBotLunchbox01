@@ -339,6 +339,15 @@ function isClearlyTaskRelated(messageContent) {
 async function handleRegularConversation(message, messageContent) {
   console.log(`🎭 Conversation handler called with: "${messageContent}"`);
   
+  // Store conversation context for this user
+  if (!client.conversationContext) client.conversationContext = new Map();
+  const userContext = client.conversationContext.get(message.author.id) || { lastMessage: '', responseCount: 0, mood: 'neutral' };
+  
+  // Update context
+  userContext.lastMessage = messageContent;
+  userContext.responseCount++;
+  client.conversationContext.set(message.author.id, userContext);
+  
   // Greetings and introductions
   if (messageContent.includes('hello') || messageContent.includes('hi') || messageContent.includes('hey')) {
     const greetings = [
@@ -349,14 +358,26 @@ async function handleRegularConversation(message, messageContent) {
       "🍱 Hey! I'm Lunchbox - I turn conversations into organized tasks!",
       "🍱 Hello! I'm your lunchbox organizer - just chat with me naturally!"
     ];
-    await message.reply(greetings[Math.floor(Math.random() * greetings.length)]);
+    
+    // If this is a repeat greeting, acknowledge it differently
+    if (userContext.responseCount > 1) {
+      await message.reply("🍱 Hey again! Still here and ready to help. What's on your mind this time?");
+    } else {
+      await message.reply(greetings[Math.floor(Math.random() * greetings.length)]);
+    }
     return;
   }
   
   // Questions about the bot (including name questions)
   if (messageContent.includes('what can you do') || messageContent.includes('how do you work') || messageContent.includes('what are your features') || 
       messageContent.includes('what is your name') || messageContent.includes('who are you') || messageContent.includes('tell me about yourself')) {
-    await message.reply("🍱 I'm Lunchbox, your AI productivity assistant! I can:\n• Create and organize tasks into fun food categories\n• Listen to your voice and create tasks automatically\n• Help you stay productive with a balanced lunchbox\n• Chat naturally about anything - I'm not just about tasks!\n\nJust talk to me naturally or use commands like `/help` to see everything I can do!");
+    
+    // Check if they've asked before
+    if (userContext.lastMessage.includes('what') && userContext.responseCount > 1) {
+      await message.reply("🍱 I'm still the same Lunchbox! But let me remind you - I'm your AI productivity buddy who can organize tasks, chat with you, and even listen to your voice. What would you like to know more about?");
+    } else {
+      await message.reply("🍱 I'm Lunchbox, your AI productivity assistant! I can:\n• Create and organize tasks into fun food categories\n• Listen to your voice and create tasks automatically\n• Help you stay productive with a balanced lunchbox\n• Chat naturally about anything - I'm not just about tasks!\n\nJust talk to me naturally or use commands like `/help` to see everything I can do!");
+    }
     return;
   }
   
@@ -407,12 +428,29 @@ async function handleRegularConversation(message, messageContent) {
   }
   
   // Default response for other conversations
-  const defaultResponses = [
-    "🍱 That's interesting! I'm here to help with productivity, but I'm happy to chat about anything. Want to add something to your lunchbox while we're talking?",
-    "🍱 I'm listening! I'm not just about tasks - I'm here to be your AI buddy too. What's on your mind?",
-    "🍱 Tell me more! I'm curious about what you're thinking. And hey, if anything sounds like a task, I can help organize it!",
-    "🍱 I'm here for you! Whether it's productivity help or just chatting, I'm all ears. What would you like to talk about?"
-  ];
+  let response;
   
-  await message.reply(defaultResponses[Math.floor(Math.random() * defaultResponses.length)]);
+  // Contextual responses based on conversation history
+  if (userContext.responseCount === 1) {
+    response = "🍱 That's interesting! I'm here to help with productivity, but I'm happy to chat about anything. Want to add something to your lunchbox while we're talking?";
+  } else if (userContext.responseCount === 2) {
+    response = "🍱 I'm listening! I'm not just about tasks - I'm here to be your AI buddy too. What's on your mind?";
+  } else if (userContext.responseCount === 3) {
+    response = "🍱 Tell me more! I'm curious about what you're thinking. And hey, if anything sounds like a task, I can help organize it!";
+  } else if (userContext.responseCount === 4) {
+    response = "🍱 I'm here for you! Whether it's productivity help or just chatting, I'm all ears. What would you like to talk about?";
+  } else {
+    // After 4+ messages, be more casual and varied
+    const casualResponses = [
+      "🍱 Cool! What else is happening?",
+      "🍱 Nice! Tell me more about that.",
+      "🍱 That sounds interesting! What's next?",
+      "🍱 I'm following along! What else?",
+      "🍱 Got it! What's on your mind now?",
+      "🍱 That's neat! What else do you want to chat about?"
+    ];
+    response = casualResponses[Math.floor(Math.random() * casualResponses.length)];
+  }
+  
+  await message.reply(response);
 }

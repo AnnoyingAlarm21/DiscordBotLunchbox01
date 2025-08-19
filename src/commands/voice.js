@@ -331,11 +331,13 @@ module.exports = {
           active: true
         });
         
-        // Listen for voice from the user who started listening
-        connection.receiver.speaking.on('start', (userId) => {
+        // Listen for voice from ANY user in the channel
+        connection.receiver.speaking.on('start', (speakingUserId) => {
           if (!client.voiceListeners.get(interaction.guildId)?.active) return;
           
-          const audioStream = connection.receiver.subscribe(userId, {
+          console.log(`🎤 User ${speakingUserId} started speaking in voice channel`);
+          
+          const audioStream = connection.receiver.subscribe(speakingUserId, {
             end: {
               behavior: EndBehaviorType.AfterSilence,
               duration: 1000,
@@ -343,7 +345,7 @@ module.exports = {
           });
           
           // Process the audio stream
-          processVoiceStream(audioStream, userId, interaction.guildId, client);
+          processVoiceStream(audioStream, speakingUserId, interaction.guildId, client);
         });
         
         await interaction.reply({
@@ -433,7 +435,7 @@ async function processVoiceStream(audioStream, userId, guildId, client) {
 // Simulate voice-to-text (replace with Deepgram integration)
 async function simulateVoiceToText(audioStream) {
   // This is a placeholder - replace with actual voice-to-text service
-  // For testing, we'll return some sample text
+  // For testing, we'll return some sample text based on common voice inputs
   return new Promise((resolve) => {
     setTimeout(() => {
       const sampleTasks = [
@@ -441,10 +443,15 @@ async function simulateVoiceToText(audioStream) {
         "I should clean my room tomorrow",
         "I have a meeting at 3 PM",
         "I want to exercise this weekend",
-        "I must buy groceries after work"
+        "I must buy groceries after work",
+        "I need to call my mom",
+        "I should study for the test",
+        "I want to play games with friends",
+        "I need to organize my desk",
+        "I should practice guitar"
       ];
       resolve(sampleTasks[Math.floor(Math.random() * sampleTasks.length)]);
-    }, 1000);
+    }, 500); // Reduced delay for better responsiveness
   });
 }
 
