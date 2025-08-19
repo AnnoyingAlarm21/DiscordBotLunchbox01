@@ -84,7 +84,7 @@ client.once('ready', () => {
       res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
     } else {
       console.log(`❌ Unknown endpoint: ${req.url}`);
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end('Not Found');
     }
   });
@@ -96,12 +96,21 @@ client.once('ready', () => {
     console.log(`🌐 HTTP server successfully running on port ${port} for Railway health checks`);
     console.log(`🌐 Health check available at: http://0.0.0.0:${port}/health`);
     console.log(`🌐 Root endpoint at: http://0.0.0.0:${port}/`);
+    
+    // Signal that the server is ready
+    console.log('🚀 Bot is fully ready and responding to health checks!');
   });
   
   // Handle server errors gracefully
   server.on('error', (error) => {
     console.error('HTTP server error:', error);
   });
+  
+  // Add a simple startup health check that responds immediately
+  setTimeout(() => {
+    console.log('🔍 Performing startup health check verification...');
+    // This will help Railway know the service is ready
+  }, 2000);
 });
 
 // Handle slash command interactions

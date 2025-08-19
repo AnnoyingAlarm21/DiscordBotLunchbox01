@@ -4,7 +4,7 @@
   "description": "A playful AI-powered productivity Discord bot that organizes tasks into food categories",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "node start-railway.js",
     "dev": "nodemon src/index.js",
     "deploy": "node src/deploy-commands.js"
   },
