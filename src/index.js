@@ -40,9 +40,19 @@ client.once('ready', () => {
   console.log(`🍱 Lunchbox is ready! Logged in as ${client.user.tag}`);
   client.user.setActivity('organizing your lunchbox! 🥪', { type: 'PLAYING' });
   
+  // Log process information for debugging
+  console.log(`📊 Process ID: ${process.pid}`);
+  console.log(`📊 Node Version: ${process.version}`);
+  console.log(`📊 Platform: ${process.platform}`);
+  console.log(`📊 Architecture: ${process.arch}`);
+  console.log(`📊 Memory Usage: ${JSON.stringify(process.memoryUsage())}`);
+  
   // Start HTTP server for Railway health checks
   const server = http.createServer((req, res) => {
+    console.log(`🌐 HTTP Request: ${req.method} ${req.url}`);
+    
     if (req.url === '/health') {
+      console.log('✅ Health check requested');
       // More comprehensive health check
       const healthStatus = {
         status: 'healthy',
@@ -59,18 +69,33 @@ client.once('ready', () => {
         'Cache-Control': 'no-cache'
       });
       res.end(JSON.stringify(healthStatus, null, 2));
+      console.log('✅ Health check response sent');
     } else if (req.url === '/') {
+      console.log('✅ Root endpoint requested');
       res.writeHead(200, { 'Content-Type': 'text/html' });
       res.end('<h1>🍱 Lunchbox Discord Bot</h1><p>Bot is running! Use /help in Discord.</p>');
+    } else if (req.url === '/ping') {
+      console.log('✅ Ping endpoint requested');
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end('pong');
+    } else if (req.url === '/status') {
+      console.log('✅ Status endpoint requested');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
     } else {
+      console.log(`❌ Unknown endpoint: ${req.url}`);
       res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('Not Found');
     }
   });
   
   const port = process.env.PORT || 3000;
+  console.log(`🌐 Starting HTTP server on port ${port}...`);
+  
   server.listen(port, '0.0.0.0', () => {
-    console.log(`🌐 HTTP server running on port ${port} for Railway health checks`);
+    console.log(`🌐 HTTP server successfully running on port ${port} for Railway health checks`);
+    console.log(`🌐 Health check available at: http://0.0.0.0:${port}/health`);
+    console.log(`🌐 Root endpoint at: http://0.0.0.0:${port}/`);
   });
   
   // Handle server errors gracefully
