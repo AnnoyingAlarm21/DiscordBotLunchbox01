@@ -1,17 +1,23 @@
 # Use Node.js 18 Alpine Linux image (lightweight and Linux-based)
 FROM node:18-alpine
 
+# Install build dependencies for native modules
+RUN apk add --no-cache python3 make g++ git
+
 # Set working directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies (including dev dependencies for build)
+RUN npm ci
 
 # Copy source code
 COPY . .
+
+# Clean up dev dependencies to reduce image size
+RUN npm prune --production
 
 # Create a non-root user for security
 RUN addgroup -g 1001 -S nodejs
