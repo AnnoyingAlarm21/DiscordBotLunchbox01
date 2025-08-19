@@ -76,6 +76,14 @@ module.exports = {
 
     // Check if user is in a voice channel
     const member = interaction.member;
+    if (!member) {
+      await interaction.reply({
+        content: '🍱 Sorry, I couldn\'t get your member information. Try again!',
+        ephemeral: true
+      });
+      return;
+    }
+    
     const voiceChannel = member.voice.channel;
 
     if (subcommand === 'join') {

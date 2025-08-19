@@ -139,6 +139,8 @@ client.on('messageCreate', async message => {
   // Ignore bot messages and messages without content
   if (message.author.bot || !message.content.trim()) return;
   
+  console.log(`📨 Message received: "${message.content}" from ${message.author.username}`);
+  
   // Check if message mentions the bot or starts with the prefix
   const prefix = process.env.BOT_PREFIX || '!';
   const isMentioned = message.mentions.users.has(client.user.id);
@@ -185,6 +187,9 @@ client.on('messageCreate', async message => {
   
   // Handle regular conversation - this is the key feature!
   const messageContent = message.content.toLowerCase().trim();
+  
+  console.log(`🔍 Processing message: "${messageContent}"`);
+  console.log(`🔍 Is mention: ${isMentioned}, Is prefixed: ${isPrefixed}`);
   
   // Check if this is a response to a pending task question
   if (client.pendingTasks && client.pendingTasks.has(message.author.id)) {
@@ -246,6 +251,7 @@ client.on('messageCreate', async message => {
     
   } else {
     // Regular conversation - respond naturally and intelligently
+    console.log(`💬 Going to conversation handler for: "${messageContent}"`);
     await handleRegularConversation(message, messageContent);
   }
 });
@@ -331,6 +337,8 @@ function isClearlyTaskRelated(messageContent) {
 
 // Handle regular conversation intelligently
 async function handleRegularConversation(message, messageContent) {
+  console.log(`🎭 Conversation handler called with: "${messageContent}"`);
+  
   // Greetings and introductions
   if (messageContent.includes('hello') || messageContent.includes('hi') || messageContent.includes('hey')) {
     const greetings = [
