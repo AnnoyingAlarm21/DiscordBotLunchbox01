@@ -186,7 +186,46 @@ client.on('messageCreate', async message => {
   // Handle regular conversation - this is the key feature!
   const messageContent = message.content.toLowerCase().trim();
   
-  // Check if the message contains task-related keywords
+  // Check if this is a response to a pending task question
+  if (client.pendingTasks && client.pendingTasks.has(message.author.id)) {
+    const pendingTask = client.pendingTasks.get(message.author.id);
+    const response = messageContent;
+    
+    if (response.includes('yes') || response.includes('yeah') || response.includes('sure') || response.includes('ok') || response.includes('yep')) {
+      // User wants to add the task
+      await message.reply(`🍱 Great! Adding "${pendingTask}" to your lunchbox...`);
+      
+      // Use the addTask command logic
+      const addTaskCommand = client.commands.get('addtask');
+      if (addTaskCommand) {
+        try {
+          const mockInteraction = {
+            user: message.author,
+            reply: message.reply.bind(message),
+            followUp: message.reply.bind(message),
+            options: {
+              getString: () => pendingTask
+            },
+            isRepliable: () => true
+          };
+          
+          await addTaskCommand.execute(mockInteraction, client);
+          client.pendingTasks.delete(message.author.id); // Clear the pending task
+        } catch (error) {
+          console.error('Error adding task from conversation:', error);
+          await message.reply('🍱 Sorry, I had trouble adding that task. Try using `/addtask` instead!');
+        }
+      }
+      return;
+    } else if (response.includes('no') || response.includes('nope') || response.includes('nah')) {
+      // User doesn't want to add the task
+      await message.reply('🍱 No problem! Just let me know if you change your mind.');
+      client.pendingTasks.delete(message.author.id); // Clear the pending task
+      return;
+    }
+  }
+  
+  // Check if the message contains task-related keywords AND user intent
   const taskKeywords = [
     'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
     'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
@@ -196,7 +235,8 @@ client.on('messageCreate', async message => {
   
   const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
   
-  if (hasTaskKeywords) {
+  // Only suggest tasks if it's clearly task-related AND not just casual conversation
+  if (hasTaskKeywords && isClearlyTaskRelated(messageContent)) {
     // This looks like a task! Ask if they want to add it
     await message.reply(`🍱 That sounds like something for your lunchbox! Would you like me to add "${message.content}" as a task? Just say "yes" or "no"!`);
     
@@ -205,57 +245,8 @@ client.on('messageCreate', async message => {
     client.pendingTasks.set(message.author.id, message.content);
     
   } else {
-    // Check if this is a response to a pending task question
-    if (client.pendingTasks && client.pendingTasks.has(message.author.id)) {
-      const pendingTask = client.pendingTasks.get(message.author.id);
-      const response = messageContent.toLowerCase();
-      
-      if (response.includes('yes') || response.includes('yeah') || response.includes('sure') || response.includes('ok')) {
-        // User wants to add the task
-        await message.reply(`🍱 Great! Adding "${pendingTask}" to your lunchbox...`);
-        
-        // Use the addTask command logic
-        const addTaskCommand = client.commands.get('addtask');
-        if (addTaskCommand) {
-          try {
-            const mockInteraction = {
-              user: message.author,
-              reply: message.reply.bind(message),
-              followUp: message.reply.bind(message),
-              options: {
-                getString: () => pendingTask
-              },
-              isRepliable: () => true
-            };
-            
-            await addTaskCommand.execute(mockInteraction, client);
-            client.pendingTasks.delete(message.author.id); // Clear the pending task
-          } catch (error) {
-            console.error('Error adding task from conversation:', error);
-            await message.reply('🍱 Sorry, I had trouble adding that task. Try using `/addtask` instead!');
-          }
-        }
-        return;
-      } else if (response.includes('no') || response.includes('nope') || response.includes('nah')) {
-        // User doesn't want to add the task
-        await message.reply('🍱 No problem! Just let me know if you change your mind.');
-        client.pendingTasks.delete(message.author.id); // Clear the pending task
-        return;
-      }
-    }
-    
-    // Regular conversation - respond naturally
-    const responses = [
-      "🍱 Hey there! How's your day going?",
-      "🍱 Hi! I'm Lunchbox, your AI productivity buddy!",
-      "🍱 Hello! Ready to organize some tasks?",
-      "🍱 Hi! I'm here to help make your day more organized and fun!",
-      "🍱 Hey! I'm Lunchbox - I turn conversations into organized tasks!",
-      "🍱 Hello! I'm your lunchbox organizer - just chat with me naturally!"
-    ];
-    
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-    await message.reply(randomResponse);
+    // Regular conversation - respond naturally and intelligently
+    await handleRegularConversation(message, messageContent);
   }
 });
 
@@ -274,3 +265,134 @@ process.on('SIGINT', () => {
   client.destroy();
   process.exit(0);
 });
+
+// Helper function to determine if a message is clearly task-related
+function isClearlyTaskRelated(messageContent) {
+  // Phrases that are clearly about tasks
+  const clearTaskPhrases = [
+    'i need to', 'i have to', 'i should', 'i must', 'i want to', 'i plan to', 'i am going to',
+    'i need to do', 'i have to do', 'i should do', 'i must do', 'i want to do',
+    'i need to finish', 'i have to finish', 'i should finish',
+    'i need to complete', 'i have to complete', 'i should complete',
+    'i need to work on', 'i have to work on', 'i should work on',
+    'i need to study', 'i have to study', 'i should study',
+    'i need to clean', 'i have to clean', 'i should clean',
+    'i need to buy', 'i have to buy', 'i should buy',
+    'i need to call', 'i have to call', 'i should call',
+    'i need to email', 'i have to email', 'i should email',
+    'i need to schedule', 'i have to schedule', 'i should schedule',
+    'i need to organize', 'i have to organize', 'i should organize'
+  ];
+  
+  // Check for clear task phrases
+  const hasClearTaskPhrase = clearTaskPhrases.some(phrase => 
+    messageContent.includes(phrase)
+  );
+  
+  // If it has a clear task phrase, it's definitely a task
+  if (hasClearTaskPhrase) return true;
+  
+  // Check for casual conversation indicators that suggest it's NOT a task
+  const casualIndicators = [
+    'how are you', 'how\'s it going', 'what\'s up', 'sup', 'hey', 'hi', 'hello',
+    'good morning', 'good afternoon', 'good evening', 'good night',
+    'nice to meet you', 'pleasure to meet you', 'how do you do',
+    'what\'s your name', 'who are you', 'tell me about yourself',
+    'what can you do', 'how do you work', 'what are your features',
+    'i like', 'i love', 'i enjoy', 'i hate', 'i dislike',
+    'the weather is', 'it\'s raining', 'it\'s sunny', 'it\'s cold', 'it\'s hot',
+    'i\'m tired', 'i\'m happy', 'i\'m sad', 'i\'m excited', 'i\'m bored',
+    'that\'s cool', 'that\'s awesome', 'that\'s amazing', 'that\'s terrible',
+    'i agree', 'i disagree', 'you\'re right', 'you\'re wrong',
+    'thank you', 'thanks', 'appreciate it', 'no problem', 'you\'re welcome'
+  ];
+  
+  const hasCasualIndicators = casualIndicators.some(indicator => 
+    messageContent.includes(indicator)
+  );
+  
+  // If it has casual indicators, it's probably not a task
+  if (hasCasualIndicators) return false;
+  
+  // Default: if it has task keywords but no clear context, ask the user
+  return true;
+}
+
+// Handle regular conversation intelligently
+async function handleRegularConversation(message, messageContent) {
+  // Greetings and introductions
+  if (messageContent.includes('hello') || messageContent.includes('hi') || messageContent.includes('hey')) {
+    const greetings = [
+      "🍱 Hey there! How's your day going?",
+      "🍱 Hi! I'm Lunchbox, your AI productivity buddy!",
+      "🍱 Hello! Ready to organize some tasks?",
+      "🍱 Hi! I'm here to help make your day more organized and fun!",
+      "🍱 Hey! I'm Lunchbox - I turn conversations into organized tasks!",
+      "🍱 Hello! I'm your lunchbox organizer - just chat with me naturally!"
+    ];
+    await message.reply(greetings[Math.floor(Math.random() * greetings.length)]);
+    return;
+  }
+  
+  // Questions about the bot
+  if (messageContent.includes('what can you do') || messageContent.includes('how do you work') || messageContent.includes('what are your features')) {
+    await message.reply("🍱 I'm Lunchbox, your AI productivity assistant! I can:\n• Create and organize tasks into fun food categories\n• Listen to your voice and create tasks automatically\n• Help you stay productive with a balanced lunchbox\n• Chat naturally about anything - I'm not just about tasks!\n\nJust talk to me naturally or use commands like `/help` to see everything I can do!");
+    return;
+  }
+  
+  // Questions about the user
+  if (messageContent.includes('how are you') || messageContent.includes('how\'s it going') || messageContent.includes('what\'s up')) {
+    const responses = [
+      "🍱 I'm doing great! Always excited to help organize someone's day! How about you?",
+      "🍱 I'm fantastic! Ready to help make your productivity delicious! What's new with you?",
+      "🍱 I'm wonderful! My lunchbox is full of helpful features. How's your day shaping up?",
+      "🍱 I'm excellent! Eager to help you pack your lunchbox with productive tasks. What's on your mind?"
+    ];
+    await message.reply(responses[Math.floor(Math.random() * responses.length)]);
+    return;
+  }
+  
+  // Weather and casual topics
+  if (messageContent.includes('weather') || messageContent.includes('raining') || messageContent.includes('sunny') || messageContent.includes('cold') || messageContent.includes('hot')) {
+    await message.reply("🍱 I'm not a weather bot, but I can help you plan your day around whatever weather you're having! Want to add some indoor or outdoor activities to your lunchbox?");
+    return;
+  }
+  
+  // Emotional responses
+  if (messageContent.includes('i\'m tired') || messageContent.includes('i\'m exhausted') || messageContent.includes('i\'m worn out')) {
+    await message.reply("🍱 I hear you! Being tired is totally normal. Maybe we can add some rest and self-care tasks to your lunchbox? Remember, taking breaks is productive too!");
+    return;
+  }
+  
+  if (messageContent.includes('i\'m happy') || messageContent.includes('i\'m excited') || messageContent.includes('i\'m thrilled')) {
+    await message.reply("🍱 That's wonderful! I love when people are feeling good! Maybe we can channel that positive energy into some fun and productive tasks for your lunchbox?");
+    return;
+  }
+  
+  if (messageContent.includes('i\'m sad') || messageContent.includes('i\'m down') || messageContent.includes('i\'m feeling low')) {
+    await message.reply("🍱 I'm sorry you're feeling down. Remember, it's okay to not be okay. Maybe we can add some gentle, achievable tasks to your lunchbox to help you feel accomplished? Small wins add up!");
+    return;
+  }
+  
+  // Gratitude
+  if (messageContent.includes('thank you') || messageContent.includes('thanks') || messageContent.includes('appreciate')) {
+    const responses = [
+      "🍱 You're very welcome! I'm here to help make your day more organized and fun!",
+      "🍱 Anytime! Helping you stay productive is what I do best!",
+      "🍱 My pleasure! I love helping people organize their lunchbox!",
+      "🍱 No problem at all! That's what I'm here for!"
+    ];
+    await message.reply(responses[Math.floor(Math.random() * responses.length)]);
+    return;
+  }
+  
+  // Default response for other conversations
+  const defaultResponses = [
+    "🍱 That's interesting! I'm here to help with productivity, but I'm happy to chat about anything. Want to add something to your lunchbox while we're talking?",
+    "🍱 I'm listening! I'm not just about tasks - I'm here to be your AI buddy too. What's on your mind?",
+    "🍱 Tell me more! I'm curious about what you're thinking. And hey, if anything sounds like a task, I can help organize it!",
+    "🍱 I'm here for you! Whether it's productivity help or just chatting, I'm all ears. What would you like to talk about?"
+  ];
+  
+  await message.reply(defaultResponses[Math.floor(Math.random() * defaultResponses.length)]);
+}
