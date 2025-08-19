@@ -2,6 +2,7 @@ const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const { config } = require('dotenv');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
 
 // Load environment variables from .env file
 config();
@@ -38,6 +39,27 @@ for (const file of commandFiles) {
 client.once('ready', () => {
   console.log(`🍱 Lunchbox is ready! Logged in as ${client.user.tag}`);
   client.user.setActivity('organizing your lunchbox! 🥪', { type: 'PLAYING' });
+  
+  // Start HTTP server for Railway health checks
+  const server = http.createServer((req, res) => {
+    if (req.url === '/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ 
+        status: 'healthy', 
+        bot: 'Lunchbox Discord Bot',
+        uptime: process.uptime(),
+        timestamp: new Date().toISOString()
+      }));
+    } else {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
+    }
+  });
+  
+  const port = process.env.PORT || 3000;
+  server.listen(port, () => {
+    console.log(`🌐 HTTP server running on port ${port} for Railway health checks`);
+  });
 });
 
 // Handle slash command interactions

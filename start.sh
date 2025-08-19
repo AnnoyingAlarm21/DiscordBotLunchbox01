@@ -12,7 +12,6 @@ if [ ! -f .env ]; then
     echo "Required values:"
     echo "- DISCORD_TOKEN"
     echo "- DISCORD_CLIENT_ID" 
-    echo "- DISCORD_GUILD_ID"
     echo "- GROQ_API_KEY"
     exit 1
 fi

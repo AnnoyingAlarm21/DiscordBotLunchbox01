@@ -25,7 +25,7 @@ A playful, AI-powered productivity Discord bot that helps organize daily tasks i
 - Node.js 18+ installed
 - Discord Bot Token
 - Groq API Key
-- Discord Server (Guild) ID
+- Discord Bot Token
 
 ### 1. Clone and Install
 
@@ -48,7 +48,6 @@ Edit `.env` with your actual values:
 ```env
 DISCORD_TOKEN=your_discord_bot_token_here
 DISCORD_CLIENT_ID=your_discord_client_id_here
-DISCORD_GUILD_ID=your_discord_server_id_here
 GROQ_API_KEY=your_groq_api_key_here
 BOT_PREFIX=!
 ```
