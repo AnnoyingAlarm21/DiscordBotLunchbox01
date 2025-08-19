@@ -43,13 +43,25 @@ client.once('ready', () => {
   // Start HTTP server for Railway health checks
   const server = http.createServer((req, res) => {
     if (req.url === '/health') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ 
-        status: 'healthy', 
+      // More comprehensive health check
+      const healthStatus = {
+        status: 'healthy',
         bot: 'Lunchbox Discord Bot',
+        discord: client.isReady() ? 'connected' : 'connecting',
         uptime: process.uptime(),
-        timestamp: new Date().toISOString()
-      }));
+        memory: process.memoryUsage(),
+        timestamp: new Date().toISOString(),
+        version: '1.0.0'
+      };
+      
+      res.writeHead(200, { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
+      });
+      res.end(JSON.stringify(healthStatus, null, 2));
+    } else if (req.url === '/') {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end('<h1>🍱 Lunchbox Discord Bot</h1><p>Bot is running! Use /help in Discord.</p>');
     } else {
       res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('Not Found');
@@ -57,8 +69,13 @@ client.once('ready', () => {
   });
   
   const port = process.env.PORT || 3000;
-  server.listen(port, () => {
+  server.listen(port, '0.0.0.0', () => {
     console.log(`🌐 HTTP server running on port ${port} for Railway health checks`);
+  });
+  
+  // Handle server errors gracefully
+  server.on('error', (error) => {
+    console.error('HTTP server error:', error);
   });
 });
 
@@ -133,3 +150,16 @@ client.on('messageCreate', async message => {
 
 // Login to Discord
 client.login(process.env.DISCORD_TOKEN);
+
+// Graceful shutdown handling for Railway
+process.on('SIGTERM', () => {
+  console.log('🔄 Received SIGTERM, shutting down gracefully...');
+  client.destroy();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('🔄 Received SIGINT, shutting down gracefully...');
+  client.destroy();
+  process.exit(0);
+});
