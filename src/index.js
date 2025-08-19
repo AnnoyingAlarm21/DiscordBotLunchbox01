@@ -312,7 +312,18 @@ function isClearlyTaskRelated(messageContent) {
   );
   
   // If it has casual indicators, it's probably not a task
-  if (hasCasualIndicators) return false;
+  // BUT if it also has questions about the bot, we should still respond
+  if (hasCasualIndicators) {
+    // Check if it's asking about the bot specifically
+    const botQuestions = ['what is your name', 'who are you', 'tell me about yourself', 'what can you do', 'how do you work'];
+    const isAskingAboutBot = botQuestions.some(question => messageContent.includes(question));
+    
+    if (isAskingAboutBot) {
+      return false; // Let it go to conversation handling
+    }
+    
+    return false; // It's casual conversation, not a task
+  }
   
   // Default: if it has task keywords but no clear context, ask the user
   return true;
@@ -334,8 +345,9 @@ async function handleRegularConversation(message, messageContent) {
     return;
   }
   
-  // Questions about the bot
-  if (messageContent.includes('what can you do') || messageContent.includes('how do you work') || messageContent.includes('what are your features')) {
+  // Questions about the bot (including name questions)
+  if (messageContent.includes('what can you do') || messageContent.includes('how do you work') || messageContent.includes('what are your features') || 
+      messageContent.includes('what is your name') || messageContent.includes('who are you') || messageContent.includes('tell me about yourself')) {
     await message.reply("🍱 I'm Lunchbox, your AI productivity assistant! I can:\n• Create and organize tasks into fun food categories\n• Listen to your voice and create tasks automatically\n• Help you stay productive with a balanced lunchbox\n• Chat naturally about anything - I'm not just about tasks!\n\nJust talk to me naturally or use commands like `/help` to see everything I can do!");
     return;
   }
