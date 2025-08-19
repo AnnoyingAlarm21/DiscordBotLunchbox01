@@ -469,23 +469,36 @@ async function addTaskFromVoice(taskText, userId, guildId, client) {
     // Use AI to categorize the task
     const addTaskCommand = client.commands.get('addtask');
     if (addTaskCommand) {
+      // Create a proper mock interaction that matches what addTask expects
       const mockInteraction = {
         user: { id: userId },
+        guildId: guildId,
         reply: async (content) => {
-          console.log(`🍱 Voice task added: ${content}`);
+          console.log(`🍱 Voice task added: ${JSON.stringify(content)}`);
           // Announce in voice channel
           const connection = client.voiceConnections.get(guildId);
           if (connection) {
-            await speakMessage(`Task added to your lunchbox: ${taskText}`, connection);
+            if (content.embeds && content.embeds[0]) {
+              // Extract task info from embed
+              const taskInfo = content.embeds[0].description || taskText;
+              await speakMessage(`Task added to your lunchbox: ${taskInfo}`, connection);
+            } else {
+              await speakMessage(`Task added to your lunchbox: ${taskText}`, connection);
+            }
           }
         },
         followUp: async (content) => {
-          console.log(`🍱 Voice task followup: ${content}`);
+          console.log(`🍱 Voice task followup: ${JSON.stringify(content)}`);
         },
         options: {
-          getString: () => taskText
+          getString: (optionName) => {
+            if (optionName === 'task') return taskText;
+            return null;
+          }
         },
-        isRepliable: () => true
+        isRepliable: () => true,
+        deferred: false,
+        replied: false
       };
       
       await addTaskCommand.execute(mockInteraction, client);

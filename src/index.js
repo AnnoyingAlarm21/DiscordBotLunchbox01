@@ -165,15 +165,21 @@ client.on('messageCreate', async message => {
     const addTaskCommand = client.commands.get('addtask');
     if (addTaskCommand) {
       try {
-        // Create a mock interaction for the addTask command
+        // Create a proper mock interaction for the addTask command
         const mockInteraction = {
           user: message.author,
+          guildId: message.guild?.id,
           reply: message.reply.bind(message),
           followUp: message.reply.bind(message),
           options: {
-            getString: () => taskContent
+            getString: (optionName) => {
+              if (optionName === 'task') return taskContent;
+              return null;
+            }
           },
-          isRepliable: () => true
+          isRepliable: () => true,
+          deferred: false,
+          replied: false
         };
         
         await addTaskCommand.execute(mockInteraction, client);
@@ -204,15 +210,21 @@ client.on('messageCreate', async message => {
       const addTaskCommand = client.commands.get('addtask');
       if (addTaskCommand) {
         try {
-          const mockInteraction = {
-            user: message.author,
-            reply: message.reply.bind(message),
-            followUp: message.reply.bind(message),
-            options: {
-              getString: () => pendingTask
-            },
-            isRepliable: () => true
-          };
+                  const mockInteraction = {
+          user: message.author,
+          guildId: message.guild?.id,
+          reply: message.reply.bind(message),
+          followUp: message.reply.bind(message),
+          options: {
+            getString: (optionName) => {
+              if (optionName === 'task') return pendingTask;
+              return null;
+            }
+          },
+          isRepliable: () => true,
+          deferred: false,
+          replied: false
+        };
           
           await addTaskCommand.execute(mockInteraction, client);
           client.pendingTasks.delete(message.author.id); // Clear the pending task
@@ -250,9 +262,9 @@ client.on('messageCreate', async message => {
     client.pendingTasks.set(message.author.id, message.content);
     
   } else {
-    // Regular conversation - respond naturally and intelligently
-    console.log(`💬 Going to conversation handler for: "${messageContent}"`);
-    await handleRegularConversation(message, messageContent);
+    // Regular conversation - use Groq AI for intelligent responses
+    console.log(`💬 Going to AI conversation handler for: "${messageContent}"`);
+    await handleAIConversation(message, messageContent, client);
   }
 });
 
@@ -453,4 +465,49 @@ async function handleRegularConversation(message, messageContent) {
   }
   
   await message.reply(response);
+}
+
+// NEW: Handle AI-powered conversations using Groq
+async function handleAIConversation(message, messageContent, client) {
+  console.log(`🤖 AI conversation handler called with: "${messageContent}"`);
+  
+  try {
+    // Use Groq for intelligent conversation
+    const Groq = require('groq-sdk');
+    const groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    });
+    
+    // Create a context-aware prompt
+    const prompt = `You are Lunchbox, a friendly and helpful AI productivity assistant. You help organize tasks into fun food categories (🍪 Sweets, 🥦 Vegetables, 🥪 Savory, 🧃 Sides) but you're also great at general conversation.
+
+User: ${messageContent}
+
+Respond naturally and helpfully. If they're asking for information, provide it. If they want to chat, be engaging. If they mention something that could be a task, gently suggest adding it to their lunchbox. Keep responses conversational and under 200 words.`;
+
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: "You are Lunchbox, a friendly AI productivity assistant who helps organize tasks and chats naturally with users."
+        },
+        {
+          role: "user", 
+          content: messageContent
+        }
+      ],
+      model: "llama3-8b-8192",
+      temperature: 0.7,
+      max_tokens: 300,
+    });
+
+    const aiResponse = completion.choices[0]?.message?.content || "🍱 That's interesting! I'm here to help with productivity and chat about anything. What's on your mind?";
+    
+    await message.reply(aiResponse);
+    
+  } catch (error) {
+    console.error('Error with AI conversation:', error);
+    // Fallback to regular conversation if AI fails
+    await handleRegularConversation(message, messageContent);
+  }
 }
