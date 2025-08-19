@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🍱 Lunchbox Discord Bot
 
 A playful, AI-powered productivity Discord bot that helps organize daily tasks into fun food categories! Instead of boring to-do lists, tasks are sorted into:
@@ -249,3 +250,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 **Made with ❤️ and lots of 🍱 by the Lunchbox team!**
 
 *Remember: A balanced lunchbox makes for a productive day! 🥪*
+=======
+# DiscordBotLunchbox01
+>>>>>>> 755f24c675030960a5f118941bd9c8539d4773a7
