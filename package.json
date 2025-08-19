@@ -1,0 +1,34 @@
+{
+  "name": "lunchbox-discord-bot",
+  "version": "1.0.0",
+  "description": "A playful AI-powered productivity Discord bot that organizes tasks into food categories",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "deploy": "node src/deploy-commands.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "productivity",
+    "ai",
+    "tasks"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "@discordjs/voice": "^0.16.1",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
+    "ffmpeg-static": "^5.2.0",
+    "groq-sdk": "^0.3.3",
+    "libsodium-wrappers": "^0.7.15"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
