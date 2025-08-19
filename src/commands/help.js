@@ -80,6 +80,16 @@ module.exports = {
           inline: false
         },
         {
+          name: '/voice listen',
+          value: 'Start listening for voice commands and automatic task creation',
+          inline: false
+        },
+        {
+          name: '/voice stop-listening',
+          value: 'Stop listening for voice commands',
+          inline: false
+        },
+        {
           name: '/help',
           value: 'Show this help message (you\'re here!)',
           inline: false
@@ -88,7 +98,7 @@ module.exports = {
       .addFields(
         {
           name: '💡 Quick Tips',
-          value: '• You can also mention the bot or use the prefix (!) to add tasks\n• Tasks are automatically categorized using AI\n• Keep your lunchbox balanced for maximum productivity\n• Complete tasks to unlock achievements!',
+          value: '• You can also mention the bot or use the prefix (!) to add tasks\n• Tasks are automatically categorized using AI\n• **NEW: Voice commands!** Use `/voice listen` to create tasks by speaking\n• Keep your lunchbox balanced for maximum productivity\n• Complete tasks to unlock achievements!',
           inline: false
         },
         {

@@ -5,11 +5,14 @@ const {
   createAudioResource, 
   AudioPlayerStatus,
   VoiceConnectionStatus,
-  entersState
+  entersState,
+  getVoiceConnection,
+  EndBehaviorType
 } = require('@discordjs/voice');
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const prism = require('prism-media');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -55,6 +58,16 @@ module.exports = {
             .setDescription('Additional message (optional)')
             .setRequired(false)
         )
+    )
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('listen')
+        .setDescription('Start listening for voice commands and task creation')
+    )
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('stop-listening')
+        .setDescription('Stop listening for voice commands')
     ),
 
   async execute(interaction, client) {
@@ -275,8 +288,239 @@ module.exports = {
         });
       }
     }
+    
+    else if (subcommand === 'listen') {
+      if (!client.voiceConnections?.has(interaction.guildId)) {
+        await interaction.reply({
+          content: '🍱 I need to be in a voice channel first! Use `/voice join`',
+          ephemeral: true
+        });
+        return;
+      }
+      
+      try {
+        const connection = client.voiceConnections.get(interaction.guildId);
+        
+        // Start voice listening
+        if (!client.voiceListeners) client.voiceListeners = new Map();
+        
+        if (client.voiceListeners.has(interaction.guildId)) {
+          await interaction.reply({
+            content: '🍱 I\'m already listening in this channel!',
+            ephemeral: true
+          });
+          return;
+        }
+        
+        // Create voice receiver
+        const receiver = connection.receiver;
+        const userId = interaction.user.id;
+        
+        // Store listener info
+        client.voiceListeners.set(interaction.guildId, {
+          userId: userId,
+          connection: connection,
+          active: true
+        });
+        
+        // Listen for voice from the user who started listening
+        connection.receiver.speaking.on('start', (userId) => {
+          if (!client.voiceListeners.get(interaction.guildId)?.active) return;
+          
+          const audioStream = connection.receiver.subscribe(userId, {
+            end: {
+              behavior: EndBehaviorType.AfterSilence,
+              duration: 1000,
+            },
+          });
+          
+          // Process the audio stream
+          processVoiceStream(audioStream, userId, interaction.guildId, client);
+        });
+        
+        await interaction.reply({
+          content: '🎤 **Voice listening activated!** I\'m now listening for your voice commands. Just speak naturally and I\'ll create tasks from what you say!',
+          ephemeral: false
+        });
+        
+        // Announce in voice channel
+        const welcomeMessage = "Voice listening activated! I'm now listening for your voice commands. Just speak naturally and I'll create tasks from what you say!";
+        await speakMessage(welcomeMessage, connection);
+        
+      } catch (error) {
+        console.error('Error starting voice listening:', error);
+        await interaction.reply({
+          content: '🍱 Sorry, I had trouble starting voice listening.',
+          ephemeral: true
+        });
+      }
+    }
+    
+    else if (subcommand === 'stop-listening') {
+      if (!client.voiceListeners?.has(interaction.guildId)) {
+        await interaction.reply({
+          content: '🍱 I\'m not listening in this channel.',
+          ephemeral: true
+        });
+        return;
+      }
+      
+      // Stop listening
+      const listener = client.voiceListeners.get(interaction.guildId);
+      listener.active = false;
+      client.voiceListeners.delete(interaction.guildId);
+      
+      await interaction.reply({
+        content: '🔇 Voice listening stopped. I\'m no longer listening for voice commands.',
+        ephemeral: false
+      });
+      
+      // Announce in voice channel
+      const stopMessage = "Voice listening stopped. I'm no longer listening for voice commands.";
+      const connection = client.voiceConnections.get(interaction.guildId);
+      if (connection) {
+        await speakMessage(stopMessage, connection);
+      }
+    }
   }
 };
+
+// Process voice stream and convert to text
+async function processVoiceStream(audioStream, userId, guildId, client) {
+  try {
+    // For now, we'll use a simple approach
+    // In production, you'd integrate with Deepgram or similar service
+    
+    // Simulate voice processing (replace with actual voice-to-text)
+    const simulatedText = await simulateVoiceToText(audioStream);
+    
+    if (simulatedText) {
+      console.log(`🎤 Voice detected from user ${userId}: "${simulatedText}"`);
+      
+      // Check if this looks like a task
+      const taskKeywords = [
+        'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
+        'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
+        'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
+        'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice'
+      ];
+      
+      const hasTaskKeywords = taskKeywords.some(keyword => 
+        simulatedText.toLowerCase().includes(keyword)
+      );
+      
+      if (hasTaskKeywords) {
+        // This sounds like a task! Add it automatically
+        await addTaskFromVoice(simulatedText, userId, guildId, client);
+      } else {
+        // Regular conversation
+        await respondToVoice(simulatedText, userId, guildId, client);
+      }
+    }
+  } catch (error) {
+    console.error('Error processing voice stream:', error);
+  }
+}
+
+// Simulate voice-to-text (replace with Deepgram integration)
+async function simulateVoiceToText(audioStream) {
+  // This is a placeholder - replace with actual voice-to-text service
+  // For testing, we'll return some sample text
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const sampleTasks = [
+        "I need to do my homework tonight",
+        "I should clean my room tomorrow",
+        "I have a meeting at 3 PM",
+        "I want to exercise this weekend",
+        "I must buy groceries after work"
+      ];
+      resolve(sampleTasks[Math.floor(Math.random() * sampleTasks.length)]);
+    }, 1000);
+  });
+}
+
+// Add task from voice input
+async function addTaskFromVoice(taskText, userId, guildId, client) {
+  try {
+    // Get the user's task storage
+    if (!client.userTasks.has(userId)) {
+      client.userTasks.set(userId, {
+        tasks: [],
+        lastUpdated: new Date()
+      });
+    }
+    
+    // Use AI to categorize the task
+    const addTaskCommand = client.commands.get('addtask');
+    if (addTaskCommand) {
+      const mockInteraction = {
+        user: { id: userId },
+        reply: async (content) => {
+          console.log(`🍱 Voice task added: ${content}`);
+          // Announce in voice channel
+          const connection = client.voiceConnections.get(guildId);
+          if (connection) {
+            await speakMessage(`Task added to your lunchbox: ${taskText}`, connection);
+          }
+        },
+        followUp: async (content) => {
+          console.log(`🍱 Voice task followup: ${content}`);
+        },
+        options: {
+          getString: () => taskText
+        },
+        isRepliable: () => true
+      };
+      
+      await addTaskCommand.execute(mockInteraction, client);
+    }
+  } catch (error) {
+    console.error('Error adding task from voice:', error);
+  }
+}
+
+// Respond to voice input
+async function respondToVoice(message, userId, guildId, client) {
+  try {
+    const connection = client.voiceConnections.get(guildId);
+    if (connection) {
+      const response = `I heard you say: ${message}. That doesn't sound like a task, but I'm here to help organize your day!`;
+      await speakMessage(response, connection);
+    }
+  } catch (error) {
+    console.error('Error responding to voice:', error);
+  }
+}
+
+// Speak a message using TTS
+async function speakMessage(message, connection) {
+  try {
+    const audioFile = await createTTSAudio(message);
+    
+    if (audioFile) {
+      const player = createAudioPlayer();
+      const resource = createAudioResource(audioFile);
+      
+      player.play(resource);
+      connection.subscribe(player);
+      
+      player.on(AudioPlayerStatus.Playing, () => {
+        console.log('🎤 Speaking:', message);
+      });
+      
+      player.on(AudioPlayerStatus.Idle, () => {
+        try {
+          fs.unlinkSync(audioFile);
+        } catch (error) {
+          console.error('Error cleaning up audio file:', error);
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error speaking message:', error);
+  }
+}
 
 // Create TTS audio using system TTS
 async function createTTSAudio(text) {

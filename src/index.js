@@ -144,41 +144,118 @@ client.on('messageCreate', async message => {
   const isMentioned = message.mentions.users.has(client.user.id);
   const isPrefixed = message.content.startsWith(prefix);
   
-  if (!isMentioned && !isPrefixed) return;
-  
-  // Extract the task content
-  let taskContent = message.content;
-  if (isMentioned) {
-    taskContent = message.content.replace(/<@!\d+>|<@\d+>/g, '').trim();
-  } else if (isPrefixed) {
-    taskContent = message.content.slice(prefix.length).trim();
-  }
-  
-  if (!taskContent) {
-    await message.reply('🍱 What task would you like me to add to your lunchbox?');
+  // If it's a direct mention or prefix command, handle as task
+  if (isMentioned || isPrefixed) {
+    // Extract the task content
+    let taskContent = message.content;
+    if (isMentioned) {
+      taskContent = message.content.replace(/<@!\d+>|<@\d+>/g, '').trim();
+    } else if (isPrefixed) {
+      taskContent = message.content.slice(prefix.length).trim();
+    }
+    
+    if (!taskContent) {
+      await message.reply('🍱 What task would you like me to add to your lunchbox?');
+      return;
+    }
+    
+    // Use the addTask command logic
+    const addTaskCommand = client.commands.get('addtask');
+    if (addTaskCommand) {
+      try {
+        // Create a mock interaction for the addTask command
+        const mockInteraction = {
+          user: message.author,
+          reply: message.reply.bind(message),
+          followUp: message.reply.bind(message),
+          options: {
+            getString: () => taskContent
+          },
+          isRepliable: () => true
+        };
+        
+        await addTaskCommand.execute(mockInteraction, client);
+      } catch (error) {
+        console.error('Error processing message:', error);
+        await message.reply('🍱 Sorry, I had trouble adding that task to your lunchbox. Try using the `/addtask` command instead!');
+      }
+    }
     return;
   }
   
-  // Use the addTask command logic
-  const addTaskCommand = client.commands.get('addtask');
-  if (addTaskCommand) {
-    try {
-      // Create a mock interaction for the addTask command
-      const mockInteraction = {
-        user: message.author,
-        reply: message.reply.bind(message),
-        followUp: message.reply.bind(message),
-        options: {
-          getString: () => taskContent
-        },
-        isRepliable: () => true
-      };
+  // Handle regular conversation - this is the key feature!
+  const messageContent = message.content.toLowerCase().trim();
+  
+  // Check if the message contains task-related keywords
+  const taskKeywords = [
+    'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
+    'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
+    'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
+    'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice'
+  ];
+  
+  const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
+  
+  if (hasTaskKeywords) {
+    // This looks like a task! Ask if they want to add it
+    await message.reply(`🍱 That sounds like something for your lunchbox! Would you like me to add "${message.content}" as a task? Just say "yes" or "no"!`);
+    
+    // Store the potential task for this user
+    if (!client.pendingTasks) client.pendingTasks = new Map();
+    client.pendingTasks.set(message.author.id, message.content);
+    
+  } else {
+    // Check if this is a response to a pending task question
+    if (client.pendingTasks && client.pendingTasks.has(message.author.id)) {
+      const pendingTask = client.pendingTasks.get(message.author.id);
+      const response = messageContent.toLowerCase();
       
-      await addTaskCommand.execute(mockInteraction, client);
-    } catch (error) {
-      console.error('Error processing message:', error);
-      await message.reply('🍱 Sorry, I had trouble adding that task to your lunchbox. Try using the `/addtask` command instead!');
+      if (response.includes('yes') || response.includes('yeah') || response.includes('sure') || response.includes('ok')) {
+        // User wants to add the task
+        await message.reply(`🍱 Great! Adding "${pendingTask}" to your lunchbox...`);
+        
+        // Use the addTask command logic
+        const addTaskCommand = client.commands.get('addtask');
+        if (addTaskCommand) {
+          try {
+            const mockInteraction = {
+              user: message.author,
+              reply: message.reply.bind(message),
+              followUp: message.reply.bind(message),
+              options: {
+                getString: () => pendingTask
+              },
+              isRepliable: () => true
+            };
+            
+            await addTaskCommand.execute(mockInteraction, client);
+            client.pendingTasks.delete(message.author.id); // Clear the pending task
+          } catch (error) {
+            console.error('Error adding task from conversation:', error);
+            await message.reply('🍱 Sorry, I had trouble adding that task. Try using `/addtask` instead!');
+          }
+        }
+        return;
+      } else if (response.includes('no') || response.includes('nope') || response.includes('nah')) {
+        // User doesn't want to add the task
+        await message.reply('🍱 No problem! Just let me know if you change your mind.');
+        client.pendingTasks.delete(message.author.id); // Clear the pending task
+        return;
+      }
     }
+    
+    // Regular conversation - respond naturally
+    const responses = [
+      "🍱 Hey there! How's your day going?",
+      "🍱 Hi! I'm Lunchbox, your AI productivity buddy!",
+      "🍱 Hello! Ready to organize some tasks?",
+      "🍱 Hi! I'm here to help make your day more organized and fun!",
+      "🍱 Hey! I'm Lunchbox - I turn conversations into organized tasks!",
+      "🍱 Hello! I'm your lunchbox organizer - just chat with me naturally!"
+    ];
+    
+    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+    await message.reply(randomResponse);
   }
 });
 
