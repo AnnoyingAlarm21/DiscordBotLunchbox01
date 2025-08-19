@@ -238,7 +238,7 @@ client.on('messageCreate', async message => {
   // Only suggest tasks if it's clearly task-related AND not just casual conversation
   if (hasTaskKeywords && isClearlyTaskRelated(messageContent)) {
     // This looks like a task! Ask if they want to add it
-    await message.reply(`🍱 That sounds like something for your lunchbox! Would you like me to add "${message.content}" as a task? Just say "yes" or "no"!`);
+    await message.reply(`🍱 That sounds like something for your lunchbox! Would you like me to add "${message.content}" as a task?`);
     
     // Store the potential task for this user
     if (!client.pendingTasks) client.pendingTasks = new Map();
