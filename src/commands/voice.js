@@ -465,108 +465,108 @@ module.exports = {
       if (connection) {
         await speakMessage(stopMessage, connection);
       }
+    }
+    
+    else if (subcommand === 'test') {
+      if (!client.voiceConnections?.has(interaction.guildId)) {
+        await interaction.reply({
+          content: '🍱 I need to be in a voice channel first! Use `/voice join`',
+          ephemeral: true
+        });
+        return;
+      }
       
-      else if (subcommand === 'test') {
-        if (!client.voiceConnections?.has(interaction.guildId)) {
-          await interaction.reply({
-            content: '🍱 I need to be in a voice channel first! Use `/voice join`',
-            ephemeral: true
-          });
-          return;
-        }
+      const testMessage = interaction.options.getString('message');
+      
+      try {
+        await interaction.deferReply();
         
-        const testMessage = interaction.options.getString('message');
+        const connection = client.voiceConnections.get(interaction.guildId);
         
-        try {
-          await interaction.deferReply();
-          
-          const connection = client.voiceConnections.get(interaction.guildId);
-          
-          // Test TTS
-          await speakMessage(testMessage, connection);
-          
-          await interaction.editReply({
-            content: `🎤 Voice test completed! I just said: "${testMessage}"`,
-            ephemeral: false
-          });
-          
-        } catch (error) {
-          console.error('Error testing voice:', error);
-          await interaction.editReply({
-            content: '🍱 Sorry, I had trouble testing the voice functionality.',
-            ephemeral: true
-          });
-        }
+        // Test TTS
+        await speakMessage(testMessage, connection);
         
-        else if (subcommand === 'trigger') {
-          if (!client.voiceConnections?.has(interaction.guildId)) {
-            await interaction.reply({
-              content: '🍱 I need to be in a voice channel first! Use `/voice join`',
-              ephemeral: true
-            });
-            return;
-          }
-          
-          try {
-            await interaction.deferReply();
-            
-            const connection = client.voiceConnections.get(interaction.guildId);
-            
-            // Simulate voice input for testing
-            const testMessage = "Hello, this is a test of voice processing!";
-            console.log(`🎤 Manual voice trigger: "${testMessage}"`);
-            
-            // Process it as a regular conversation
-            await respondToVoiceWithAI(testMessage, interaction.user.id, interaction.guildId, client);
-            
-            await interaction.editReply({
-              content: `🎤 Voice trigger completed! I processed: "${testMessage}"`,
-              ephemeral: false
-            });
-            
-          } catch (error) {
-            console.error('Error with voice trigger:', error);
-            await interaction.editReply({
-              content: '🍱 Sorry, I had trouble with the voice trigger.',
-              ephemeral: true
-            });
-          }
-        }
+        await interaction.editReply({
+          content: `🎤 Voice test completed! I just said: "${testMessage}"`,
+          ephemeral: false
+        });
         
-        else if (subcommand === 'respond') {
-          if (!client.voiceConnections?.has(interaction.guildId)) {
-            await interaction.reply({
-              content: '🍱 I need to be in a voice channel first! Use `/voice join`',
-              ephemeral: true
-            });
-            return;
-          }
-          
-          const userMessage = interaction.options.getString('message');
-          
-          try {
-            await interaction.deferReply();
-            
-            const connection = client.voiceConnections.get(interaction.guildId);
-            
-            console.log(`🎤 Voice respond command: "${userMessage}"`);
-            
-            // Process it as a regular conversation with AI
-            await respondToVoiceWithAI(userMessage, interaction.user.id, interaction.guildId, client);
-            
-            await interaction.editReply({
-              content: `🎤 Voice response completed! I processed: "${userMessage}"`,
-              ephemeral: false
-            });
-            
-          } catch (error) {
-            console.error('Error with voice respond:', error);
-            await interaction.editReply({
-              content: '🍱 Sorry, I had trouble with the voice response.',
-              ephemeral: true
-            });
-          }
-        }
+      } catch (error) {
+        console.error('Error testing voice:', error);
+        await interaction.editReply({
+          content: '🍱 Sorry, I had trouble testing the voice functionality.',
+          ephemeral: true
+        });
+      }
+    }
+    
+    else if (subcommand === 'trigger') {
+      if (!client.voiceConnections?.has(interaction.guildId)) {
+        await interaction.reply({
+          content: '🍱 I need to be in a voice channel first! Use `/voice join`',
+          ephemeral: true
+        });
+        return;
+      }
+      
+      try {
+        await interaction.deferReply();
+        
+        const connection = client.voiceConnections.get(interaction.guildId);
+        
+        // Simulate voice input for testing
+        const testMessage = "Hello, this is a test of voice processing!";
+        console.log(`🎤 Manual voice trigger: "${testMessage}"`);
+        
+        // Process it as a regular conversation
+        await respondToVoiceWithAI(testMessage, interaction.user.id, interaction.guildId, client);
+        
+        await interaction.editReply({
+          content: `🎤 Voice trigger completed! I processed: "${testMessage}"`,
+          ephemeral: false
+        });
+        
+      } catch (error) {
+        console.error('Error with voice trigger:', error);
+        await interaction.editReply({
+          content: '🍱 Sorry, I had trouble with the voice trigger.',
+          ephemeral: true
+        });
+      }
+    }
+    
+    else if (subcommand === 'respond') {
+      if (!client.voiceConnections?.has(interaction.guildId)) {
+        await interaction.reply({
+          content: '🍱 I need to be in a voice channel first! Use `/voice join`',
+          ephemeral: true
+        });
+        return;
+      }
+      
+      const userMessage = interaction.options.getString('message');
+      
+      try {
+        await interaction.deferReply();
+        
+        const connection = client.voiceConnections.get(interaction.guildId);
+        
+        console.log(`🎤 Voice respond command: "${userMessage}"`);
+        
+        // Process it as a regular conversation with AI
+        await respondToVoiceWithAI(userMessage, interaction.user.id, interaction.guildId, client);
+        
+        await interaction.editReply({
+          content: `🎤 Voice response completed! I processed: "${userMessage}"`,
+          ephemeral: false
+        });
+        
+      } catch (error) {
+        console.error('Error with voice respond:', error);
+        await interaction.editReply({
+          content: '🍱 Sorry, I had trouble with the voice response.',
+          ephemeral: true
+        });
       }
     }
   }
