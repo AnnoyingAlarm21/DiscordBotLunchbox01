@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node start-railway.js",
+    "railway": "node start-railway.js",
     "dev": "nodemon src/index.js",
     "deploy": "node src/deploy-commands.js"
   },

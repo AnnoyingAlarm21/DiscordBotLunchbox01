@@ -35,4 +35,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "console.log('Bot is healthy')" || exit 1
 
 # Start the bot
-CMD ["node", "start-railway.js"]
+CMD ["npm", "run", "railway"]
