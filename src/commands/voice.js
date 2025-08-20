@@ -78,6 +78,21 @@ module.exports = {
                     .setDescription('Message to test TTS with')
                     .setRequired(true)
                 )
+            )
+            .addSubcommand(subcommand =>
+              subcommand
+                .setName('trigger')
+                .setDescription('Manually trigger voice processing (for testing)')
+            )
+            .addSubcommand(subcommand =>
+              subcommand
+                .setName('respond')
+                .setDescription('Make the bot respond to a message in voice')
+                .addStringOption(option =>
+                  option.setName('message')
+                    .setDescription('What should the bot respond to?')
+                    .setRequired(true)
+                )
             ),
 
   async execute(interaction, client) {
@@ -368,6 +383,45 @@ module.exports = {
           }
         });
         
+        // Also listen for when users stop speaking to trigger processing
+        connection.receiver.speaking.on('end', (speakingUserId) => {
+          if (!client.voiceListeners.get(interaction.guildId)?.active) return;
+          
+          console.log(`🎤 User ${speakingUserId} stopped speaking in voice channel`);
+          
+          // Trigger voice processing after a short delay
+          setTimeout(async () => {
+            try {
+              // Simulate voice input for testing
+              const testMessage = "Hello, I just spoke in the voice channel";
+              console.log(`🎤 Simulating voice input: "${testMessage}"`);
+              
+              // Check if this looks like a task
+              const taskKeywords = [
+                'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
+                'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
+                'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
+                'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice'
+              ];
+              
+              const hasTaskKeywords = taskKeywords.some(keyword => 
+                testMessage.toLowerCase().includes(keyword)
+              );
+              
+              if (hasTaskKeywords) {
+                console.log(`🍱 Voice task detected: "${testMessage}"`);
+                await addTaskFromVoice(testMessage, speakingUserId, interaction.guildId, client);
+              } else {
+                console.log(`💬 Voice conversation detected: "${testMessage}"`);
+                await respondToVoiceWithAI(testMessage, speakingUserId, interaction.guildId, client);
+              }
+              
+            } catch (error) {
+              console.error('Error processing simulated voice input:', error);
+            }
+          }, 500); // Wait 500ms after user stops speaking
+        });
+        
         await interaction.reply({
           content: '🎤 **Voice listening activated!** I\'m now listening for your voice commands. Just speak naturally and I\'ll create tasks from what you say!',
           ephemeral: false
@@ -442,6 +496,76 @@ module.exports = {
             content: '🍱 Sorry, I had trouble testing the voice functionality.',
             ephemeral: true
           });
+        }
+        
+        else if (subcommand === 'trigger') {
+          if (!client.voiceConnections?.has(interaction.guildId)) {
+            await interaction.reply({
+              content: '🍱 I need to be in a voice channel first! Use `/voice join`',
+              ephemeral: true
+            });
+            return;
+          }
+          
+          try {
+            await interaction.deferReply();
+            
+            const connection = client.voiceConnections.get(interaction.guildId);
+            
+            // Simulate voice input for testing
+            const testMessage = "Hello, this is a test of voice processing!";
+            console.log(`🎤 Manual voice trigger: "${testMessage}"`);
+            
+            // Process it as a regular conversation
+            await respondToVoiceWithAI(testMessage, interaction.user.id, interaction.guildId, client);
+            
+            await interaction.editReply({
+              content: `🎤 Voice trigger completed! I processed: "${testMessage}"`,
+              ephemeral: false
+            });
+            
+          } catch (error) {
+            console.error('Error with voice trigger:', error);
+            await interaction.editReply({
+              content: '🍱 Sorry, I had trouble with the voice trigger.',
+              ephemeral: true
+            });
+          }
+        }
+        
+        else if (subcommand === 'respond') {
+          if (!client.voiceConnections?.has(interaction.guildId)) {
+            await interaction.reply({
+              content: '🍱 I need to be in a voice channel first! Use `/voice join`',
+              ephemeral: true
+            });
+            return;
+          }
+          
+          const userMessage = interaction.options.getString('message');
+          
+          try {
+            await interaction.deferReply();
+            
+            const connection = client.voiceConnections.get(interaction.guildId);
+            
+            console.log(`🎤 Voice respond command: "${userMessage}"`);
+            
+            // Process it as a regular conversation with AI
+            await respondToVoiceWithAI(userMessage, interaction.user.id, interaction.guildId, client);
+            
+            await interaction.editReply({
+              content: `🎤 Voice response completed! I processed: "${userMessage}"`,
+              ephemeral: false
+            });
+            
+          } catch (error) {
+            console.error('Error with voice respond:', error);
+            await interaction.editReply({
+              content: '🍱 Sorry, I had trouble with the voice response.',
+              ephemeral: true
+            });
+          }
         }
       }
     }
