@@ -64,36 +64,11 @@ module.exports = {
         .setName('listen')
         .setDescription('Start listening for voice commands and task creation')
     )
-                .addSubcommand(subcommand =>
-              subcommand
-                .setName('stop-listening')
-                .setDescription('Stop listening for voice commands')
-            )
-            .addSubcommand(subcommand =>
-              subcommand
-                .setName('test')
-                .setDescription('Test voice functionality with a sample message')
-                .addStringOption(option =>
-                  option.setName('message')
-                    .setDescription('Message to test TTS with')
-                    .setRequired(true)
-                )
-            )
-            .addSubcommand(subcommand =>
-              subcommand
-                .setName('trigger')
-                .setDescription('Manually trigger voice processing (for testing)')
-            )
-            .addSubcommand(subcommand =>
-              subcommand
-                .setName('respond')
-                .setDescription('Make the bot respond to a message in voice')
-                .addStringOption(option =>
-                  option.setName('message')
-                    .setDescription('What should the bot respond to?')
-                    .setRequired(true)
-                )
-            ),
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('stop-listening')
+        .setDescription('Stop listening for voice commands')
+    ),
 
   async execute(interaction, client) {
     const subcommand = interaction.options.getSubcommand();
@@ -362,64 +337,18 @@ module.exports = {
           
           console.log(`🎤 User ${speakingUserId} started speaking in voice channel`);
           
-          try {
-            const audioStream = connection.receiver.subscribe(speakingUserId, {
-              end: {
-                behavior: EndBehaviorType.AfterSilence,
-                duration: 1000,
-              },
-            });
-            
-            // Process the audio stream
-            processVoiceStream(audioStream, speakingUserId, interaction.guildId, client);
-            
-            // Add error handling for the audio stream
-            audioStream.on('error', (error) => {
-              console.error('Audio stream error:', error);
-            });
-            
-          } catch (error) {
-            console.error('Error setting up voice listening for user:', speakingUserId, error);
-          }
-        });
-        
-        // Also listen for when users stop speaking to trigger processing
-        connection.receiver.speaking.on('end', (speakingUserId) => {
-          if (!client.voiceListeners.get(interaction.guildId)?.active) return;
+          // Immediately acknowledge that we heard them
+          speakMessage("I heard you! Let me process what you said...", connection);
           
-          console.log(`🎤 User ${speakingUserId} stopped speaking in voice channel`);
+          const audioStream = connection.receiver.subscribe(speakingUserId, {
+            end: {
+              behavior: EndBehaviorType.AfterSilence,
+              duration: 1500, // Increased duration for better capture
+            },
+          });
           
-          // Trigger voice processing after a short delay
-          setTimeout(async () => {
-            try {
-              // Simulate voice input for testing
-              const testMessage = "Hello, I just spoke in the voice channel";
-              console.log(`🎤 Simulating voice input: "${testMessage}"`);
-              
-              // Check if this looks like a task
-              const taskKeywords = [
-                'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
-                'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
-                'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
-                'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice'
-              ];
-              
-              const hasTaskKeywords = taskKeywords.some(keyword => 
-                testMessage.toLowerCase().includes(keyword)
-              );
-              
-              if (hasTaskKeywords) {
-                console.log(`🍱 Voice task detected: "${testMessage}"`);
-                await addTaskFromVoice(testMessage, speakingUserId, interaction.guildId, client);
-              } else {
-                console.log(`💬 Voice conversation detected: "${testMessage}"`);
-                await respondToVoiceWithAI(testMessage, speakingUserId, interaction.guildId, client);
-              }
-              
-            } catch (error) {
-              console.error('Error processing simulated voice input:', error);
-            }
-          }, 500); // Wait 500ms after user stops speaking
+          // Process the audio stream
+          processVoiceStream(audioStream, speakingUserId, interaction.guildId, client);
         });
         
         await interaction.reply({
@@ -466,119 +395,13 @@ module.exports = {
         await speakMessage(stopMessage, connection);
       }
     }
-    
-    else if (subcommand === 'test') {
-      if (!client.voiceConnections?.has(interaction.guildId)) {
-        await interaction.reply({
-          content: '🍱 I need to be in a voice channel first! Use `/voice join`',
-          ephemeral: true
-        });
-        return;
-      }
-      
-      const testMessage = interaction.options.getString('message');
-      
-      try {
-        await interaction.deferReply();
-        
-        const connection = client.voiceConnections.get(interaction.guildId);
-        
-        // Test TTS
-        await speakMessage(testMessage, connection);
-        
-        await interaction.editReply({
-          content: `🎤 Voice test completed! I just said: "${testMessage}"`,
-          ephemeral: false
-        });
-        
-      } catch (error) {
-        console.error('Error testing voice:', error);
-        await interaction.editReply({
-          content: '🍱 Sorry, I had trouble testing the voice functionality.',
-          ephemeral: true
-        });
-      }
-    }
-    
-    else if (subcommand === 'trigger') {
-      if (!client.voiceConnections?.has(interaction.guildId)) {
-        await interaction.reply({
-          content: '🍱 I need to be in a voice channel first! Use `/voice join`',
-          ephemeral: true
-        });
-        return;
-      }
-      
-      try {
-        await interaction.deferReply();
-        
-        const connection = client.voiceConnections.get(interaction.guildId);
-        
-        // Simulate voice input for testing
-        const testMessage = "Hello, this is a test of voice processing!";
-        console.log(`🎤 Manual voice trigger: "${testMessage}"`);
-        
-        // Process it as a regular conversation
-        await respondToVoiceWithAI(testMessage, interaction.user.id, interaction.guildId, client);
-        
-        await interaction.editReply({
-          content: `🎤 Voice trigger completed! I processed: "${testMessage}"`,
-          ephemeral: false
-        });
-        
-      } catch (error) {
-        console.error('Error with voice trigger:', error);
-        await interaction.editReply({
-          content: '🍱 Sorry, I had trouble with the voice trigger.',
-          ephemeral: true
-        });
-      }
-    }
-    
-    else if (subcommand === 'respond') {
-      if (!client.voiceConnections?.has(interaction.guildId)) {
-        await interaction.reply({
-          content: '🍱 I need to be in a voice channel first! Use `/voice join`',
-          ephemeral: true
-        });
-        return;
-      }
-      
-      const userMessage = interaction.options.getString('message');
-      
-      try {
-        await interaction.deferReply();
-        
-        const connection = client.voiceConnections.get(interaction.guildId);
-        
-        console.log(`🎤 Voice respond command: "${userMessage}"`);
-        
-        // Process it as a regular conversation with AI
-        await respondToVoiceWithAI(userMessage, interaction.user.id, interaction.guildId, client);
-        
-        await interaction.editReply({
-          content: `🎤 Voice response completed! I processed: "${userMessage}"`,
-          ephemeral: false
-        });
-        
-      } catch (error) {
-        console.error('Error with voice respond:', error);
-        await interaction.editReply({
-          content: '🍱 Sorry, I had trouble with the voice response.',
-          ephemeral: true
-        });
-      }
-    }
   }
 };
 
 // Process voice stream and convert to text
 async function processVoiceStream(audioStream, userId, guildId, client) {
   try {
-    console.log(`🎤 Processing voice stream from user ${userId} in guild ${guildId}`);
-    
-    // For now, we'll use a simple approach
-    // In production, you'd integrate with Deepgram or similar service
+    console.log(`🎤 Processing voice stream from user ${userId}...`);
     
     // Simulate voice processing (replace with actual voice-to-text)
     const simulatedText = await simulateVoiceToText(audioStream);
@@ -603,7 +426,7 @@ async function processVoiceStream(audioStream, userId, guildId, client) {
         console.log(`🍱 Voice task detected: "${simulatedText}"`);
         await addTaskFromVoice(simulatedText, userId, guildId, client);
       } else {
-        // Regular conversation - use Groq AI for intelligent voice responses
+        // Regular conversation - use Groq for intelligent response
         console.log(`💬 Voice conversation detected: "${simulatedText}"`);
         await respondToVoiceWithAI(simulatedText, userId, guildId, client);
       }
@@ -619,7 +442,8 @@ async function simulateVoiceToText(audioStream) {
   // For testing, we'll return some sample text based on common voice inputs
   return new Promise((resolve) => {
     setTimeout(() => {
-      const sampleTasks = [
+      const sampleInputs = [
+        // Task-related
         "I need to do my homework tonight",
         "I should clean my room tomorrow",
         "I have a meeting at 3 PM",
@@ -629,10 +453,21 @@ async function simulateVoiceToText(audioStream) {
         "I should study for the test",
         "I want to play games with friends",
         "I need to organize my desk",
-        "I should practice guitar"
+        "I should practice guitar",
+        // General conversation
+        "How are you doing today?",
+        "What's the weather like?",
+        "Tell me a joke",
+        "What time is it?",
+        "How's your day going?",
+        "What can you help me with?",
+        "I'm feeling tired today",
+        "That's really interesting",
+        "Can you help me with something?",
+        "What's your favorite food?"
       ];
-      resolve(sampleTasks[Math.floor(Math.random() * sampleTasks.length)]);
-    }, 500); // Reduced delay for better responsiveness
+      resolve(sampleInputs[Math.floor(Math.random() * sampleInputs.length)]);
+    }, 300); // Even faster response for better feel
   });
 }
 
@@ -689,75 +524,56 @@ async function addTaskFromVoice(taskText, userId, guildId, client) {
   }
 }
 
-// Respond to voice input with AI
+// Respond to voice input with AI-powered responses
 async function respondToVoiceWithAI(message, userId, guildId, client) {
   try {
     console.log(`🤖 Processing voice conversation with AI: "${message}"`);
     
     const connection = client.voiceConnections.get(guildId);
-    if (!connection) {
-      console.error('No voice connection found for guild:', guildId);
-      return;
-    }
-    
-    // Use Groq for intelligent voice conversation
-    const Groq = require('groq-sdk');
-    const groq = new Groq({
-      apiKey: process.env.GROQ_API_KEY,
-    });
-    
-    // Create a voice-specific prompt
-    const prompt = `You are Lunchbox, a friendly AI productivity assistant. The user just said something in a voice channel. 
-
-User's voice message: "${message}"
-
-Respond naturally and helpfully. Since this is voice, keep your response conversational and under 50 words. If they mention something that could be a task, gently suggest adding it to their lunchbox. Be engaging and friendly.`;
-
-    const completion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: "You are Lunchbox, a friendly AI productivity assistant who helps organize tasks and chats naturally with users in voice channels."
-        },
-        {
-          role: "user", 
-          content: message
-        }
-      ],
-      model: "llama3-8b-8192",
-      temperature: 0.7,
-      max_tokens: 150,
-    });
-
-    const aiResponse = completion.choices[0]?.message?.content || "That's interesting! I'm here to help organize your day. What's on your mind?";
-    
-    console.log(`🤖 AI voice response: "${aiResponse}"`);
-    
-    // Speak the AI response in the voice channel
-    await speakMessage(aiResponse, connection);
-    
-  } catch (error) {
-    console.error('Error with AI voice conversation:', error);
-    // Fallback to simple response if AI fails
-    const connection = client.voiceConnections.get(guildId);
     if (connection) {
-      const fallbackResponse = `I heard you say: ${message}. That's interesting! I'm here to help organize your day.`;
-      await speakMessage(fallbackResponse, connection);
+      // Use Groq for intelligent voice responses
+      const Groq = require('groq-sdk');
+      const groq = new Groq({
+        apiKey: process.env.GROQ_API_KEY,
+      });
+      
+      try {
+        const completion = await groq.chat.completions.create({
+          messages: [
+            {
+              role: "system",
+              content: "You are Lunchbox, a friendly AI productivity assistant. Respond naturally to voice conversations. Keep responses conversational and under 100 words since this is voice."
+            },
+            {
+              role: "user", 
+              content: message
+            }
+          ],
+          model: "llama3-8b-8192",
+          temperature: 0.7,
+          max_tokens: 150,
+        });
+
+        const aiResponse = completion.choices[0]?.message?.content || "That's interesting! I'm here to help with productivity and chat about anything.";
+        
+        // Speak the AI response
+        await speakMessage(aiResponse, connection);
+        
+      } catch (aiError) {
+        console.error('AI error in voice response:', aiError);
+        // Fallback response
+        const fallbackResponse = `I heard you say: ${message}. That's interesting! I'm here to help organize your day and chat about anything.`;
+        await speakMessage(fallbackResponse, connection);
+      }
     }
+  } catch (error) {
+    console.error('Error responding to voice with AI:', error);
   }
 }
 
-// Keep the old function for backward compatibility
+// Legacy function for backward compatibility
 async function respondToVoice(message, userId, guildId, client) {
-  try {
-    const connection = client.voiceConnections.get(guildId);
-    if (connection) {
-      const response = `I heard you say: ${message}. That doesn't sound like a task, but I'm here to help organize your day!`;
-      await speakMessage(response, connection);
-    }
-  } catch (error) {
-    console.error('Error responding to voice:', error);
-  }
+  await respondToVoiceWithAI(message, userId, guildId, client);
 }
 
 // Speak a message using TTS
@@ -801,17 +617,14 @@ async function createTTSAudio(text) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
 
-    // Use macOS say command for TTS with better voice settings
-    const command = `say -v Alex -o "${filePath}" "${text}"`;
-    
-    console.log(`🎤 Creating TTS audio: "${text}"`);
+    // Use macOS say command for TTS
+    const command = `say -o "${filePath}" "${text}"`;
     
     exec(command, (error) => {
       if (error) {
         console.error('TTS Error:', error);
         resolve(null);
       } else {
-        console.log(`🎤 TTS audio created: ${filePath}`);
         resolve(filePath);
       }
     });
