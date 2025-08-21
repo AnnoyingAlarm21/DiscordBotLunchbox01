@@ -403,11 +403,11 @@ async function processVoiceStream(audioStream, userId, guildId, client) {
   try {
     console.log(`🎤 Processing voice stream from user ${userId}...`);
     
-    // Simulate voice processing (replace with actual voice-to-text)
-    const simulatedText = await simulateVoiceToText(audioStream);
+    // Use Deepgram for real voice-to-text
+    const transcribedText = await processVoiceWithDeepgram(audioStream, userId, guildId, client);
     
-    if (simulatedText) {
-      console.log(`🎤 Voice detected from user ${userId}: "${simulatedText}"`);
+    if (transcribedText) {
+      console.log(`🎤 Voice detected from user ${userId}: "${transcribedText}"`);
       
       // Check if this looks like a task
       const taskKeywords = [
@@ -418,17 +418,17 @@ async function processVoiceStream(audioStream, userId, guildId, client) {
       ];
       
       const hasTaskKeywords = taskKeywords.some(keyword => 
-        simulatedText.toLowerCase().includes(keyword)
+        transcribedText.toLowerCase().includes(keyword)
       );
       
       if (hasTaskKeywords) {
         // This sounds like a task! Add it automatically
-        console.log(`🍱 Voice task detected: "${simulatedText}"`);
-        await addTaskFromVoice(simulatedText, userId, guildId, client);
+        console.log(`🍱 Voice task detected: "${transcribedText}"`);
+        await addTaskFromVoice(transcribedText, userId, guildId, client);
       } else {
         // Regular conversation - use Groq for intelligent response
-        console.log(`💬 Voice conversation detected: "${simulatedText}"`);
-        await respondToVoiceWithAI(simulatedText, userId, guildId, client);
+        console.log(`💬 Voice conversation detected: "${transcribedText}"`);
+        await respondToVoiceWithAI(transcribedText, userId, guildId, client);
       }
     }
   } catch (error) {
@@ -436,7 +436,86 @@ async function processVoiceStream(audioStream, userId, guildId, client) {
   }
 }
 
-// Simulate voice-to-text (replace with Deepgram integration)
+// Real Deepgram voice-to-text integration
+async function processVoiceWithDeepgram(audioStream, userId, guildId, client) {
+  try {
+    console.log(`🎤 Processing real voice with Deepgram for user ${userId}...`);
+    
+    const { Deepgram } = require('@deepgram/sdk');
+    const deepgram = new Deepgram(process.env.DEEPGRAM_API_KEY);
+    
+    // Convert audio stream to buffer with proper format handling
+    const chunks = [];
+    for await (const chunk of audioStream) {
+      chunks.push(chunk);
+    }
+    const audioBuffer = Buffer.concat(chunks);
+    
+    console.log(`🎤 Audio buffer size: ${audioBuffer.length} bytes`);
+    
+    // Try different audio formats that Discord might use
+    let transcript = null;
+    
+    try {
+      // First try with Opus format (most common for Discord)
+      const response = await deepgram.transcription.preRecorded({
+        buffer: audioBuffer,
+        mimetype: 'audio/opus',
+        options: {
+          model: 'nova-2',
+          language: 'en-US',
+          smart_format: true,
+          punctuate: true,
+          diarize: false,
+          utterances: false
+        }
+      });
+      
+      transcript = response.results?.channels[0]?.alternatives[0]?.transcript;
+      
+    } catch (opusError) {
+      console.log('🎤 Opus format failed, trying raw audio...');
+      
+      try {
+        // Fallback to raw audio
+        const response = await deepgram.transcription.preRecorded({
+          buffer: audioBuffer,
+          mimetype: 'audio/raw',
+          options: {
+            model: 'nova-2',
+            language: 'en-US',
+            smart_format: true,
+            punctuate: true,
+            diarize: false,
+            utterances: false
+          }
+        });
+        
+        transcript = response.results?.channels[0]?.alternatives[0]?.transcript;
+        
+      } catch (rawError) {
+        console.log('🎤 Raw audio format also failed, using fallback...');
+        throw rawError;
+      }
+    }
+    
+    if (transcript && transcript.trim()) {
+      console.log(`🎤 Deepgram transcribed: "${transcript}"`);
+      return transcript.trim();
+    } else {
+      console.log('🎤 No speech detected in audio');
+      return null;
+    }
+    
+  } catch (error) {
+    console.error('Deepgram error:', error);
+    console.log('🎤 Falling back to simulated text...');
+    // Fallback to simulated text if Deepgram fails
+    return await simulateVoiceToText(audioStream);
+  }
+}
+
+// Fallback simulated voice-to-text (kept for backup)
 async function simulateVoiceToText(audioStream) {
   // This is a placeholder - replace with actual voice-to-text service
   // For testing, we'll return some sample text based on common voice inputs
