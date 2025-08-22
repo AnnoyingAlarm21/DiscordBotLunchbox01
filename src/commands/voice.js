@@ -335,6 +335,13 @@ module.exports = {
         connection.receiver.speaking.on('start', async (speakingUserId) => {
           if (!client.voiceListeners.get(interaction.guildId)?.active) return;
           
+          // Prevent multiple audio streams for the same user
+          const listenerKey = `${interaction.guildId}_${speakingUserId}`;
+          if (client.activeAudioStreams?.has(listenerKey)) {
+            console.log(`🎤 Already processing audio for user ${speakingUserId}, skipping...`);
+            return;
+          }
+          
           console.log(`🎤 User ${speakingUserId} started speaking in voice channel`);
           
           // Get the user's name
@@ -342,8 +349,19 @@ module.exports = {
           const member = guild.members.cache.get(speakingUserId);
           const userName = member ? member.displayName : `User ${speakingUserId}`;
           
-          // Announce in voice channel
-          speakMessage(`${userName} is talking!`, connection);
+          // Announce in voice channel (only once per user to prevent audio overlap)
+          if (!client.userAnnouncements?.has(speakingUserId)) {
+            speakMessage(`${userName} is talking!`, connection);
+            if (!client.userAnnouncements) client.userAnnouncements = new Set();
+            client.userAnnouncements.add(speakingUserId);
+            
+            // Reset announcement after 3 seconds
+            setTimeout(() => {
+              if (client.userAnnouncements) {
+                client.userAnnouncements.delete(speakingUserId);
+              }
+            }, 3000);
+          }
           
           // Send message to text channel (optional - don't fail if no permission)
           const textChannel = interaction.channel;
@@ -355,18 +373,22 @@ module.exports = {
             });
           }
           
+          // Mark this user as being processed
+          if (!client.activeAudioStreams) client.activeAudioStreams = new Map();
+          client.activeAudioStreams.set(listenerKey, true);
+          
           // Wait a moment for audio to start properly
           setTimeout(() => {
             const audioStream = connection.receiver.subscribe(speakingUserId, {
               end: {
                 behavior: EndBehaviorType.AfterSilence,
-                duration: 2000, // Increased duration for better capture
+                duration: 1500, // Reduced duration to prevent overlap
               },
             });
             
             // Process the audio stream with real-time transcription
-            processVoiceStreamRealTime(audioStream, speakingUserId, interaction.guildId, client, textChannel, userName);
-          }, 500); // Wait 500ms for audio to stabilize
+            processVoiceStreamRealTime(audioStream, speakingUserId, interaction.guildId, client, textChannel, userName, listenerKey);
+          }, 300); // Reduced delay to prevent overlap
         });
         
         await interaction.reply({
@@ -455,7 +477,7 @@ async function processVoiceStream(audioStream, userId, guildId, client) {
 }
 
 // NEW: Real-time voice transcription with text channel updates
-async function processVoiceStreamRealTime(audioStream, userId, guildId, client, textChannel, userName) {
+async function processVoiceStreamRealTime(audioStream, userId, guildId, client, textChannel, userName, listenerKey) {
   try {
     console.log(`🎤 Processing real-time voice from ${userName}...`);
     
@@ -520,18 +542,24 @@ async function processVoiceStreamRealTime(audioStream, userId, guildId, client, 
         await respondToVoiceWithAI(transcribedText, userId, guildId, client);
       }
     }
-  } catch (error) {
-    console.error('Error processing real-time voice stream:', error);
-    
-    // Send error message to text channel (optional - don't fail if no permission)
-    if (textChannel) {
-      textChannel.send(`❌ **Error processing voice** from ${userName}: ${error.message}`).catch(error => {
-        console.log(`🎤 Could not send error message to text channel: ${error.message}`);
-        // Continue without text channel message - this is not critical
-      });
+      } catch (error) {
+      console.error('Error processing real-time voice stream:', error);
+      
+      // Send error message to text channel (optional - don't fail if no permission)
+      if (textChannel) {
+        textChannel.send(`❌ **Error processing voice** from ${userName}: ${error.message}`).catch(error => {
+          console.log(`🎤 Could not send error message to text channel: ${error.message}`);
+          // Continue without text channel message - this is not critical
+        });
+      }
+    } finally {
+      // Always clean up the audio stream
+      if (listenerKey && client.activeAudioStreams) {
+        client.activeAudioStreams.delete(listenerKey);
+        console.log(`🎤 Cleaned up audio stream for ${userName}`);
+      }
     }
   }
-}
 
 // Real Deepgram voice-to-text integration
 async function processVoiceWithDeepgram(audioStream, userId, guildId, client) {
