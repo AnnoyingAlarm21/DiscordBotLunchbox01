@@ -584,96 +584,128 @@ async function processVoiceWithDeepgram(audioStream, userId, guildId, client) {
       return null;
     }
     
-    // Discord sends audio in a special format - try to process it as raw PCM
-    try {
-      console.log('🎤 Trying Discord audio format...');
-      
-      const response = await deepgram.transcription.preRecorded({
-        buffer: audioBuffer,
+    // Try multiple approaches for Discord audio compatibility
+    const approaches = [
+      {
+        name: 'Opus (Discord Native)',
+        mimetype: 'audio/opus',
+        options: {
+          model: 'nova-2',
+          language: 'en-US',
+          smart_format: true,
+          punctuate: true
+        }
+      },
+      {
+        name: 'Raw PCM (Discord Specs)',
         mimetype: 'audio/raw',
         options: {
           model: 'nova-2',
           language: 'en-US',
           smart_format: true,
           punctuate: true,
-          // Discord-specific audio settings
-          sample_rate: 48000, // Discord's sample rate
-          channels: 1, // Mono audio
-          encoding: 'linear16' // 16-bit PCM
+          sample_rate: 48000,
+          channels: 1,
+          encoding: 'linear16'
         }
-      });
-      
-      const transcript = response.results?.channels[0]?.alternatives[0]?.transcript;
-      
-      if (transcript && transcript.trim()) {
-        console.log(`🎤 Deepgram transcribed: "${transcript}"`);
-        return transcript.trim();
-      } else {
-        console.log('🎤 No speech detected in Discord audio');
+      },
+      {
+        name: 'Raw PCM (Alternative)',
+        mimetype: 'audio/raw',
+        options: {
+          model: 'nova-2',
+          language: 'en-US',
+          smart_format: true,
+          punctuate: true,
+          sample_rate: 48000,
+          channels: 1,
+          encoding: 'mulaw'
+        }
       }
-      
-    } catch (discordError) {
-      console.log(`🎤 Discord audio format failed: ${discordError.message}`);
-      
-      // Try alternative approach - convert to WAV first
+    ];
+    
+    // Try each approach
+    for (const approach of approaches) {
       try {
-        console.log('🎤 Trying WAV conversion...');
+        console.log(`🎤 Trying ${approach.name}...`);
         
-        // Create a simple WAV header for Discord audio
-        const sampleRate = 48000;
-        const channels = 1;
-        const bitsPerSample = 16;
-        
-        // Calculate WAV header
-        const dataSize = audioBuffer.length;
-        const headerSize = 44;
-        const fileSize = headerSize + dataSize - 8;
-        
-        const wavHeader = Buffer.alloc(headerSize);
-        wavHeader.write('RIFF', 0);
-        wavHeader.writeUInt32LE(fileSize, 4);
-        wavHeader.write('WAVE', 8);
-        wavHeader.write('fmt ', 12);
-        wavHeader.writeUInt32LE(16, 16);
-        wavHeader.writeUInt16LE(1, 20);
-        wavHeader.writeUInt16LE(channels, 22);
-        wavHeader.writeUInt32LE(sampleRate, 24);
-        wavHeader.writeUInt32LE(sampleRate * channels * bitsPerSample / 8, 28);
-        wavHeader.writeUInt16LE(channels * bitsPerSample / 8, 32);
-        wavHeader.writeUInt16LE(bitsPerSample, 34);
-        wavHeader.write('data', 36);
-        wavHeader.writeUInt32LE(dataSize, 40);
-        
-        // Combine header and audio data
-        const wavBuffer = Buffer.concat([wavHeader, audioBuffer]);
-        
-        const wavResponse = await deepgram.transcription.preRecorded({
-          buffer: wavBuffer,
-          mimetype: 'audio/wav',
-          options: {
-            model: 'nova-2',
-            language: 'en-US',
-            smart_format: true,
-            punctuate: true
-          }
+        const response = await deepgram.transcription.preRecorded({
+          buffer: audioBuffer,
+          mimetype: approach.mimetype,
+          options: approach.options
         });
         
-        const wavTranscript = wavResponse.results?.channels[0]?.alternatives[0]?.transcript;
+        const transcript = response.results?.channels[0]?.alternatives[0]?.transcript;
         
-        if (wavTranscript && wavTranscript.trim()) {
-          console.log(`🎤 Deepgram transcribed (WAV): "${wavTranscript}"`);
-          return wavTranscript.trim();
+        if (transcript && transcript.trim()) {
+          console.log(`🎤 SUCCESS! Deepgram transcribed (${approach.name}): "${transcript}"`);
+          return transcript.trim();
         } else {
-          console.log('🎤 No speech detected in WAV audio');
+          console.log(`🎤 No speech detected in ${approach.name}`);
         }
         
-      } catch (wavError) {
-        console.log(`🎤 WAV conversion failed: ${wavError.message}`);
+      } catch (error) {
+        console.log(`🎤 ${approach.name} failed: ${error.message}`);
+        continue; // Try next approach
       }
     }
     
-    // If all methods fail, return null
-    console.log('🎤 All audio processing methods failed, no speech detected');
+    // If all approaches fail, try WAV conversion as last resort
+    try {
+      console.log('🎤 Trying WAV conversion as last resort...');
+      
+      // Create WAV header for Discord audio
+      const sampleRate = 48000;
+      const channels = 1;
+      const bitsPerSample = 16;
+      const dataSize = audioBuffer.length;
+      const headerSize = 44;
+      const fileSize = headerSize + dataSize - 8;
+      
+      const wavHeader = Buffer.alloc(headerSize);
+      wavHeader.write('RIFF', 0);
+      wavHeader.writeUInt32LE(fileSize, 4);
+      wavHeader.write('WAVE', 8);
+      wavHeader.write('fmt ', 12);
+      wavHeader.writeUInt32LE(16, 16);
+      wavHeader.writeUInt16LE(1, 20);
+      wavHeader.writeUInt16LE(channels, 22);
+      wavHeader.writeUInt32LE(sampleRate, 24);
+      wavHeader.writeUInt32LE(sampleRate * channels * bitsPerSample / 8, 28);
+      wavHeader.writeUInt16LE(channels * bitsPerSample / 8, 32);
+      wavHeader.writeUInt16LE(bitsPerSample, 34);
+      wavHeader.write('data', 36);
+      wavHeader.writeUInt32LE(dataSize, 40);
+      
+      const wavBuffer = Buffer.concat([wavHeader, audioBuffer]);
+      
+      const wavResponse = await deepgram.transcription.preRecorded({
+        buffer: wavBuffer,
+        mimetype: 'audio/wav',
+        options: {
+          model: 'nova-2',
+          language: 'en-US',
+          smart_format: true,
+          punctuate: true
+        }
+      });
+      
+      const wavTranscript = wavResponse.results?.channels[0]?.alternatives[0]?.transcript;
+      
+      if (wavTranscript && wavTranscript.trim()) {
+        console.log(`🎤 SUCCESS! Deepgram transcribed (WAV): "${wavTranscript}"`);
+        return wavTranscript.trim();
+      } else {
+        console.log('🎤 No speech detected in WAV audio');
+      }
+      
+    } catch (wavError) {
+      console.log(`🎤 WAV conversion failed: ${wavError.message}`);
+    }
+    
+    // If everything fails, log detailed info for debugging
+    console.log(`🎤 ALL AUDIO FORMATS FAILED. Audio buffer: ${audioBuffer.length} bytes`);
+    console.log(`🎤 First 32 bytes: ${audioBuffer.slice(0, 32).toString('hex')}`);
     return null;
     
   } catch (error) {
