@@ -331,7 +331,7 @@ module.exports = {
           active: true
         });
         
-        // Listen for voice from ANY user in the channel
+                // Listen for voice from ANY user in the channel
         connection.receiver.speaking.on('start', async (speakingUserId) => {
           if (!client.voiceListeners.get(interaction.guildId)?.active) return;
           
@@ -345,25 +345,28 @@ module.exports = {
           // Announce in voice channel
           speakMessage(`${userName} is talking!`, connection);
           
-                  // Send message to text channel (optional - don't fail if no permission)
-        const textChannel = interaction.channel;
-        if (textChannel) {
-          // Try to send message, but don't fail if no permission
-          textChannel.send(`🎤 **${userName}** started talking...`).catch(error => {
-            console.log(`🎤 Could not send message to text channel: ${error.message}`);
-            // Continue without text channel message - this is not critical
-          });
-        }
+          // Send message to text channel (optional - don't fail if no permission)
+          const textChannel = interaction.channel;
+          if (textChannel) {
+            // Try to send message, but don't fail if no permission
+            textChannel.send(`🎤 **${userName}** started talking...`).catch(error => {
+              console.log(`🎤 Could not send message to text channel: ${error.message}`);
+              // Continue without text channel message - this is not critical
+            });
+          }
           
-          const audioStream = connection.receiver.subscribe(speakingUserId, {
-            end: {
-              behavior: EndBehaviorType.AfterSilence,
-              duration: 1500, // Increased duration for better capture
-            },
-          });
-          
-          // Process the audio stream with real-time transcription
-          processVoiceStreamRealTime(audioStream, speakingUserId, interaction.guildId, client, textChannel, userName);
+          // Wait a moment for audio to start properly
+          setTimeout(() => {
+            const audioStream = connection.receiver.subscribe(speakingUserId, {
+              end: {
+                behavior: EndBehaviorType.AfterSilence,
+                duration: 2000, // Increased duration for better capture
+              },
+            });
+            
+            // Process the audio stream with real-time transcription
+            processVoiceStreamRealTime(audioStream, speakingUserId, interaction.guildId, client, textChannel, userName);
+          }, 500); // Wait 500ms for audio to stabilize
         });
         
         await interaction.reply({
@@ -547,36 +550,26 @@ async function processVoiceWithDeepgram(audioStream, userId, guildId, client) {
     
     console.log(`🎤 Audio buffer size: ${audioBuffer.length} bytes`);
     
-    // Use Deepgram v1.3.0 compatible format
-    try {
-      const response = await deepgram.transcription.preRecorded({
-        buffer: audioBuffer,
-        mimetype: 'audio/opus',
-        options: {
-          model: 'nova-2',
-          language: 'en-US',
-          smart_format: true,
-          punctuate: true
-        }
-      });
-      
-      const transcript = response.results?.channels[0]?.alternatives[0]?.transcript;
-      
-      if (transcript && transcript.trim()) {
-        console.log(`🎤 Deepgram transcribed: "${transcript}"`);
-        return transcript.trim();
-      } else {
-        console.log('🎤 No speech detected in audio');
-        return null;
-      }
-      
-    } catch (formatError) {
-      console.log('🎤 Opus format failed, trying raw audio...');
-      
+    // Only process if we have meaningful audio data
+    if (audioBuffer.length < 100) {
+      console.log('🎤 Audio buffer too small, likely no speech detected');
+      return null;
+    }
+    
+    // Try multiple audio formats for Discord compatibility
+    const formats = [
+      { mimetype: 'audio/opus', name: 'Opus' },
+      { mimetype: 'audio/raw', name: 'Raw' },
+      { mimetype: 'audio/wav', name: 'WAV' }
+    ];
+    
+    for (const format of formats) {
       try {
+        console.log(`🎤 Trying ${format.name} format...`);
+        
         const response = await deepgram.transcription.preRecorded({
           buffer: audioBuffer,
-          mimetype: 'audio/raw',
+          mimetype: format.mimetype,
           options: {
             model: 'nova-2',
             language: 'en-US',
@@ -588,24 +581,27 @@ async function processVoiceWithDeepgram(audioStream, userId, guildId, client) {
         const transcript = response.results?.channels[0]?.alternatives[0]?.transcript;
         
         if (transcript && transcript.trim()) {
-          console.log(`🎤 Deepgram transcribed: "${transcript}"`);
+          console.log(`🎤 Deepgram transcribed (${format.name}): "${transcript}"`);
           return transcript.trim();
         } else {
-          console.log('🎤 No speech detected in audio');
-          return null;
+          console.log(`🎤 No speech detected in ${format.name} audio`);
         }
         
-      } catch (rawError) {
-        console.log('🎤 Raw audio format also failed, using fallback...');
-        throw rawError;
+      } catch (formatError) {
+        console.log(`🎤 ${format.name} format failed: ${formatError.message}`);
+        continue; // Try next format
       }
     }
     
+    // If all formats fail, return null instead of falling back to simulation
+    console.log('🎤 All audio formats failed, no speech detected');
+    return null;
+    
   } catch (error) {
     console.error('Deepgram error:', error);
-    console.log('🎤 Falling back to simulated text...');
-    // Fallback to simulated text if Deepgram fails
-    return await simulateVoiceToText(audioStream);
+    console.log('🎤 Deepgram failed, no transcription available');
+    // Don't fallback to simulated text - return null instead
+    return null;
   }
 }
 
