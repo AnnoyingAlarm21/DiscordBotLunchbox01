@@ -348,7 +348,12 @@ module.exports = {
           // Send message to text channel
           const textChannel = interaction.channel;
           if (textChannel) {
-            textChannel.send(`🎤 **${userName}** started talking...`);
+            try {
+              await textChannel.send(`🎤 **${userName}** started talking...`);
+            } catch (permissionError) {
+              console.log(`🎤 Could not send message to text channel: ${permissionError.message}`);
+              // Continue without text channel message
+            }
           }
           
           const audioStream = connection.receiver.subscribe(speakingUserId, {
@@ -531,11 +536,8 @@ async function processVoiceWithDeepgram(audioStream, userId, guildId, client) {
     
     console.log(`🎤 Audio buffer size: ${audioBuffer.length} bytes`);
     
-    // Try different audio formats that Discord might use
-    let transcript = null;
-    
+    // Use Deepgram v1.3.0 compatible format
     try {
-      // First try with Opus format (most common for Discord)
       const response = await deepgram.transcription.preRecorded({
         buffer: audioBuffer,
         mimetype: 'audio/opus',
@@ -543,19 +545,24 @@ async function processVoiceWithDeepgram(audioStream, userId, guildId, client) {
           model: 'nova-2',
           language: 'en-US',
           smart_format: true,
-          punctuate: true,
-          diarize: false,
-          utterances: false
+          punctuate: true
         }
       });
       
-      transcript = response.results?.channels[0]?.alternatives[0]?.transcript;
+      const transcript = response.results?.channels[0]?.alternatives[0]?.transcript;
       
-    } catch (opusError) {
+      if (transcript && transcript.trim()) {
+        console.log(`🎤 Deepgram transcribed: "${transcript}"`);
+        return transcript.trim();
+      } else {
+        console.log('🎤 No speech detected in audio');
+        return null;
+      }
+      
+    } catch (formatError) {
       console.log('🎤 Opus format failed, trying raw audio...');
       
       try {
-        // Fallback to raw audio
         const response = await deepgram.transcription.preRecorded({
           buffer: audioBuffer,
           mimetype: 'audio/raw',
@@ -563,26 +570,24 @@ async function processVoiceWithDeepgram(audioStream, userId, guildId, client) {
             model: 'nova-2',
             language: 'en-US',
             smart_format: true,
-            punctuate: true,
-            diarize: false,
-            utterances: false
+            punctuate: true
           }
         });
         
-        transcript = response.results?.channels[0]?.alternatives[0]?.transcript;
+        const transcript = response.results?.channels[0]?.alternatives[0]?.transcript;
+        
+        if (transcript && transcript.trim()) {
+          console.log(`🎤 Deepgram transcribed: "${transcript}"`);
+          return transcript.trim();
+        } else {
+          console.log('🎤 No speech detected in audio');
+          return null;
+        }
         
       } catch (rawError) {
         console.log('🎤 Raw audio format also failed, using fallback...');
         throw rawError;
       }
-    }
-    
-    if (transcript && transcript.trim()) {
-      console.log(`🎤 Deepgram transcribed: "${transcript}"`);
-      return transcript.trim();
-    } else {
-      console.log('🎤 No speech detected in audio');
-      return null;
     }
     
   } catch (error) {
@@ -786,7 +791,7 @@ async function speakMessage(message, connection) {
   }
 }
 
-// Create TTS audio using system TTS
+// Create TTS audio using Linux-compatible TTS
 async function createTTSAudio(text) {
   return new Promise((resolve) => {
     const fileName = `tts_${Date.now()}.wav`;
@@ -798,16 +803,62 @@ async function createTTSAudio(text) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
 
-    // Use macOS say command for TTS
-    const command = `say -o "${filePath}" "${text}"`;
+    // Use espeak for Linux TTS (fallback to simulated TTS if not available)
+    const command = `espeak -w "${filePath}" "${text}"`;
     
     exec(command, (error) => {
       if (error) {
-        console.error('TTS Error:', error);
-        resolve(null);
+        console.log('TTS: espeak not available, using simulated TTS...');
+        // Create a simple beep sound as fallback
+        createSimulatedAudio(filePath, text).then(resolve);
       } else {
         resolve(filePath);
       }
     });
   });
+}
+
+// Create simulated audio for TTS fallback
+async function createSimulatedAudio(filePath, text) {
+  try {
+    // Create a simple WAV file with a beep sound
+    const sampleRate = 22050;
+    const duration = Math.min(text.length * 0.1, 3); // 0.1 seconds per character, max 3 seconds
+    const samples = Math.floor(sampleRate * duration);
+    
+    // Create a simple sine wave beep
+    const audioData = Buffer.alloc(samples * 2); // 16-bit audio
+    for (let i = 0; i < samples; i++) {
+      const value = Math.sin(2 * Math.PI * 440 * i / sampleRate) * 0.3; // 440Hz tone
+      const sample = Math.floor(value * 32767);
+      audioData.writeInt16LE(sample, i * 2);
+    }
+    
+    // Write WAV header
+    const wavHeader = Buffer.alloc(44);
+    wavHeader.write('RIFF', 0);
+    wavHeader.writeUInt32LE(36 + audioData.length, 4);
+    wavHeader.write('WAVE', 8);
+    wavHeader.write('fmt ', 12);
+    wavHeader.writeUInt32LE(16, 16);
+    wavHeader.writeUInt16LE(1, 20);
+    wavHeader.writeUInt16LE(1, 22);
+    wavHeader.writeUInt32LE(sampleRate, 24);
+    wavHeader.writeUInt32LE(sampleRate * 2, 28);
+    wavHeader.writeUInt16LE(2, 32);
+    wavHeader.writeUInt16LE(16, 34);
+    wavHeader.write('data', 36);
+    wavHeader.writeUInt32LE(audioData.length, 40);
+    
+    // Combine header and audio data
+    const fullWav = Buffer.concat([wavHeader, audioData]);
+    fs.writeFileSync(filePath, fullWav);
+    
+    console.log(`TTS: Created simulated audio file: ${filePath}`);
+    return filePath;
+    
+  } catch (error) {
+    console.error('TTS: Error creating simulated audio:', error);
+    return null;
+  }
 }
