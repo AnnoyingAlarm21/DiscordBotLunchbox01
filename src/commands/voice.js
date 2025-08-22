@@ -337,8 +337,19 @@ module.exports = {
           
           console.log(`🎤 User ${speakingUserId} started speaking in voice channel`);
           
-          // Immediately acknowledge that we heard them
-          speakMessage("I heard you! Let me process what you said...", connection);
+          // Get the user's name
+          const guild = interaction.guild;
+          const member = guild.members.cache.get(speakingUserId);
+          const userName = member ? member.displayName : `User ${speakingUserId}`;
+          
+          // Announce in voice channel
+          speakMessage(`${userName} is talking!`, connection);
+          
+          // Send message to text channel
+          const textChannel = interaction.channel;
+          if (textChannel) {
+            textChannel.send(`🎤 **${userName}** started talking...`);
+          }
           
           const audioStream = connection.receiver.subscribe(speakingUserId, {
             end: {
@@ -347,8 +358,8 @@ module.exports = {
             },
           });
           
-          // Process the audio stream
-          processVoiceStream(audioStream, speakingUserId, interaction.guildId, client);
+          // Process the audio stream with real-time transcription
+          processVoiceStreamRealTime(audioStream, speakingUserId, interaction.guildId, client, textChannel, userName);
         });
         
         await interaction.reply({
@@ -433,6 +444,73 @@ async function processVoiceStream(audioStream, userId, guildId, client) {
     }
   } catch (error) {
     console.error('Error processing voice stream:', error);
+  }
+}
+
+// NEW: Real-time voice transcription with text channel updates
+async function processVoiceStreamRealTime(audioStream, userId, guildId, client, textChannel, userName) {
+  try {
+    console.log(`🎤 Processing real-time voice from ${userName}...`);
+    
+    // Use Deepgram for real voice-to-text
+    const transcribedText = await processVoiceWithDeepgram(audioStream, userId, guildId, client);
+    
+    if (transcribedText) {
+      console.log(`🎤 ${userName} said: "${transcribedText}"`);
+      
+      // Send transcription to text channel
+      if (textChannel) {
+        const embed = new EmbedBuilder()
+          .setColor(0x00FF00)
+          .setAuthor({ name: userName, iconURL: 'https://cdn.discordapp.com/emojis/🎤' })
+          .setDescription(`**Voice Transcription:**\n${transcribedText}`)
+          .setTimestamp()
+          .setFooter({ text: 'Real-time voice transcription' });
+        
+        await textChannel.send({ embeds: [embed] });
+      }
+      
+      // Check if this looks like a task
+      const taskKeywords = [
+        'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
+        'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
+        'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
+        'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice'
+      ];
+      
+      const hasTaskKeywords = taskKeywords.some(keyword => 
+        transcribedText.toLowerCase().includes(keyword)
+      );
+      
+      if (hasTaskKeywords) {
+        // This sounds like a task! Add it automatically
+        console.log(`🍱 Voice task detected from ${userName}: "${transcribedText}"`);
+        
+        // Send task detection message to text channel
+        if (textChannel) {
+          await textChannel.send(`🍱 **Task Detected!** ${userName} said something that sounds like a task: "${transcribedText}"`);
+        }
+        
+        await addTaskFromVoice(transcribedText, userId, guildId, client);
+      } else {
+        // Regular conversation - use Groq for intelligent response
+        console.log(`💬 Voice conversation from ${userName}: "${transcribedText}"`);
+        
+        // Send conversation message to text channel
+        if (textChannel) {
+          await textChannel.send(`💬 **${userName}** said: "${transcribedText}"`);
+        }
+        
+        await respondToVoiceWithAI(transcribedText, userId, guildId, client);
+      }
+    }
+  } catch (error) {
+    console.error('Error processing real-time voice stream:', error);
+    
+    // Send error message to text channel
+    if (textChannel) {
+      await textChannel.send(`❌ **Error processing voice** from ${userName}: ${error.message}`);
+    }
   }
 }
 
@@ -637,6 +715,30 @@ async function respondToVoiceWithAI(message, userId, guildId, client) {
         
         // Speak the AI response
         await speakMessage(aiResponse, connection);
+        
+        // Also send AI response to text channel if we can find it
+        try {
+          const guild = client.guilds.cache.get(guildId);
+          if (guild) {
+            // Find the first text channel to send the response
+            const textChannel = guild.channels.cache.find(channel => 
+              channel.type === 0 && channel.permissionsFor(client.user).has('SendMessages')
+            );
+            
+            if (textChannel) {
+              const embed = new EmbedBuilder()
+                .setColor(0x0099FF)
+                .setAuthor({ name: 'Lunchbox AI', iconURL: 'https://cdn.discordapp.com/emojis/🤖' })
+                .setDescription(`**AI Response:**\n${aiResponse}`)
+                .setTimestamp()
+                .setFooter({ text: 'Voice AI response' });
+              
+              await textChannel.send({ embeds: [embed] });
+            }
+          }
+        } catch (textError) {
+          console.log('Could not send AI response to text channel:', textError.message);
+        }
         
       } catch (aiError) {
         console.error('AI error in voice response:', aiError);
