@@ -332,7 +332,7 @@ module.exports = {
         });
         
         // Listen for voice from ANY user in the channel
-        connection.receiver.speaking.on('start', (speakingUserId) => {
+        connection.receiver.speaking.on('start', async (speakingUserId) => {
           if (!client.voiceListeners.get(interaction.guildId)?.active) return;
           
           console.log(`🎤 User ${speakingUserId} started speaking in voice channel`);
