@@ -556,20 +556,72 @@ async function processVoiceWithDeepgram(audioStream, userId, guildId, client) {
       return null;
     }
     
-    // Try multiple audio formats for Discord compatibility
-    const formats = [
-      { mimetype: 'audio/opus', name: 'Opus' },
-      { mimetype: 'audio/raw', name: 'Raw' },
-      { mimetype: 'audio/wav', name: 'WAV' }
-    ];
-    
-    for (const format of formats) {
+    // Discord sends audio in a special format - try to process it as raw PCM
+    try {
+      console.log('🎤 Trying Discord audio format...');
+      
+      const response = await deepgram.transcription.preRecorded({
+        buffer: audioBuffer,
+        mimetype: 'audio/raw',
+        options: {
+          model: 'nova-2',
+          language: 'en-US',
+          smart_format: true,
+          punctuate: true,
+          // Discord-specific audio settings
+          sample_rate: 48000, // Discord's sample rate
+          channels: 1, // Mono audio
+          encoding: 'linear16' // 16-bit PCM
+        }
+      });
+      
+      const transcript = response.results?.channels[0]?.alternatives[0]?.transcript;
+      
+      if (transcript && transcript.trim()) {
+        console.log(`🎤 Deepgram transcribed: "${transcript}"`);
+        return transcript.trim();
+      } else {
+        console.log('🎤 No speech detected in Discord audio');
+      }
+      
+    } catch (discordError) {
+      console.log(`🎤 Discord audio format failed: ${discordError.message}`);
+      
+      // Try alternative approach - convert to WAV first
       try {
-        console.log(`🎤 Trying ${format.name} format...`);
+        console.log('🎤 Trying WAV conversion...');
         
-        const response = await deepgram.transcription.preRecorded({
-          buffer: audioBuffer,
-          mimetype: format.mimetype,
+        // Create a simple WAV header for Discord audio
+        const sampleRate = 48000;
+        const channels = 1;
+        const bitsPerSample = 16;
+        
+        // Calculate WAV header
+        const dataSize = audioBuffer.length;
+        const headerSize = 44;
+        const fileSize = headerSize + dataSize - 8;
+        
+        const wavHeader = Buffer.alloc(headerSize);
+        wavHeader.write('RIFF', 0);
+        wavHeader.writeUInt32LE(fileSize, 4);
+        wavHeader.write('WAVE', 8);
+        wavHeader.write('fmt ', 12);
+        wavHeader.writeUInt32LE(16, 16);
+        wavHeader.writeUInt16LE(1, 20);
+        wavHeader.writeUInt16LE(channels, 22);
+        wavHeader.writeUInt32LE(sampleRate, 24);
+        wavHeader.writeUInt32LE(sampleRate * channels * bitsPerSample / 8, 28);
+        wavHeader.writeUInt16LE(channels * bitsPerSample / 8, 32);
+        wavHeader.writeUInt16LE(bitsPerSample, 34);
+        wavHeader.write('data', 36);
+        wavHeader.writeUInt32LE(dataSize, 40);
+        
+        // Combine header and audio data
+        const wavBuffer = Buffer.concat([wavHeader, audioBuffer]);
+        
+        const wavResponse = await deepgram.transcription.preRecorded({
+          buffer: wavBuffer,
+          mimetype: 'audio/wav',
           options: {
             model: 'nova-2',
             language: 'en-US',
@@ -578,23 +630,22 @@ async function processVoiceWithDeepgram(audioStream, userId, guildId, client) {
           }
         });
         
-        const transcript = response.results?.channels[0]?.alternatives[0]?.transcript;
+        const wavTranscript = wavResponse.results?.channels[0]?.alternatives[0]?.transcript;
         
-        if (transcript && transcript.trim()) {
-          console.log(`🎤 Deepgram transcribed (${format.name}): "${transcript}"`);
-          return transcript.trim();
+        if (wavTranscript && wavTranscript.trim()) {
+          console.log(`🎤 Deepgram transcribed (WAV): "${wavTranscript}"`);
+          return wavTranscript.trim();
         } else {
-          console.log(`🎤 No speech detected in ${format.name} audio`);
+          console.log('🎤 No speech detected in WAV audio');
         }
         
-      } catch (formatError) {
-        console.log(`🎤 ${format.name} format failed: ${formatError.message}`);
-        continue; // Try next format
+      } catch (wavError) {
+        console.log(`🎤 WAV conversion failed: ${wavError.message}`);
       }
     }
     
-    // If all formats fail, return null instead of falling back to simulation
-    console.log('🎤 All audio formats failed, no speech detected');
+    // If all methods fail, return null
+    console.log('🎤 All audio processing methods failed, no speech detected');
     return null;
     
   } catch (error) {
