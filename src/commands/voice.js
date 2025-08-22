@@ -345,16 +345,15 @@ module.exports = {
           // Announce in voice channel
           speakMessage(`${userName} is talking!`, connection);
           
-          // Send message to text channel
-          const textChannel = interaction.channel;
-          if (textChannel) {
-            try {
-              await textChannel.send(`🎤 **${userName}** started talking...`);
-            } catch (permissionError) {
-              console.log(`🎤 Could not send message to text channel: ${permissionError.message}`);
-              // Continue without text channel message
-            }
-          }
+                  // Send message to text channel (optional - don't fail if no permission)
+        const textChannel = interaction.channel;
+        if (textChannel) {
+          // Try to send message, but don't fail if no permission
+          textChannel.send(`🎤 **${userName}** started talking...`).catch(error => {
+            console.log(`🎤 Could not send message to text channel: ${error.message}`);
+            // Continue without text channel message - this is not critical
+          });
+        }
           
           const audioStream = connection.receiver.subscribe(speakingUserId, {
             end: {
@@ -463,7 +462,7 @@ async function processVoiceStreamRealTime(audioStream, userId, guildId, client, 
     if (transcribedText) {
       console.log(`🎤 ${userName} said: "${transcribedText}"`);
       
-      // Send transcription to text channel
+      // Send transcription to text channel (optional - don't fail if no permission)
       if (textChannel) {
         const embed = new EmbedBuilder()
           .setColor(0x00FF00)
@@ -472,7 +471,10 @@ async function processVoiceStreamRealTime(audioStream, userId, guildId, client, 
           .setTimestamp()
           .setFooter({ text: 'Real-time voice transcription' });
         
-        await textChannel.send({ embeds: [embed] });
+        textChannel.send({ embeds: [embed] }).catch(error => {
+          console.log(`🎤 Could not send transcription to text channel: ${error.message}`);
+          // Continue without text channel message - this is not critical
+        });
       }
       
       // Check if this looks like a task
@@ -491,9 +493,12 @@ async function processVoiceStreamRealTime(audioStream, userId, guildId, client, 
         // This sounds like a task! Add it automatically
         console.log(`🍱 Voice task detected from ${userName}: "${transcribedText}"`);
         
-        // Send task detection message to text channel
+        // Send task detection message to text channel (optional - don't fail if no permission)
         if (textChannel) {
-          await textChannel.send(`🍱 **Task Detected!** ${userName} said something that sounds like a task: "${transcribedText}"`);
+          textChannel.send(`🍱 **Task Detected!** ${userName} said something that sounds like a task: "${transcribedText}"`).catch(error => {
+            console.log(`🎤 Could not send task detection to text channel: ${error.message}`);
+            // Continue without text channel message - this is not critical
+          });
         }
         
         await addTaskFromVoice(transcribedText, userId, guildId, client);
@@ -501,9 +506,12 @@ async function processVoiceStreamRealTime(audioStream, userId, guildId, client, 
         // Regular conversation - use Groq for intelligent response
         console.log(`💬 Voice conversation from ${userName}: "${transcribedText}"`);
         
-        // Send conversation message to text channel
+        // Send conversation message to text channel (optional - don't fail if no permission)
         if (textChannel) {
-          await textChannel.send(`💬 **${userName}** said: "${transcribedText}"`);
+          textChannel.send(`💬 **${userName}** said: "${transcribedText}"`).catch(error => {
+            console.log(`🎤 Could not send conversation to text channel: ${error.message}`);
+            // Continue without text channel message - this is not critical
+          });
         }
         
         await respondToVoiceWithAI(transcribedText, userId, guildId, client);
@@ -512,9 +520,12 @@ async function processVoiceStreamRealTime(audioStream, userId, guildId, client, 
   } catch (error) {
     console.error('Error processing real-time voice stream:', error);
     
-    // Send error message to text channel
+    // Send error message to text channel (optional - don't fail if no permission)
     if (textChannel) {
-      await textChannel.send(`❌ **Error processing voice** from ${userName}: ${error.message}`);
+      textChannel.send(`❌ **Error processing voice** from ${userName}: ${error.message}`).catch(error => {
+        console.log(`🎤 Could not send error message to text channel: ${error.message}`);
+        // Continue without text channel message - this is not critical
+      });
     }
   }
 }
