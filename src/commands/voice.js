@@ -707,9 +707,53 @@ async function processVoiceWithDeepgram(audioStream, userId, guildId, client) {
     console.log(`🎤 ALL AUDIO FORMATS FAILED. Audio buffer: ${audioBuffer.length} bytes`);
     console.log(`🎤 First 32 bytes: ${audioBuffer.slice(0, 32).toString('hex')}`);
     
-    // TEMPORARY: Use working simulated STT for testing
-    console.log('🎤 Using working simulated STT for testing...');
-    return await simulateVoiceToText(audioStream);
+    // Try Google Speech-to-Text as a working alternative
+    try {
+      console.log('🎤 Trying Google Speech-to-Text...');
+      
+      const speech = require('@google-cloud/speech');
+      const client = new speech.SpeechClient({
+        keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS || null,
+        credentials: process.env.GOOGLE_CREDENTIALS ? JSON.parse(process.env.GOOGLE_CREDENTIALS) : null
+      });
+      
+      // Convert Discord audio to proper format for Google
+      const audio = {
+        content: audioBuffer.toString('base64')
+      };
+      
+      const config = {
+        encoding: 'LINEAR16',
+        sampleRateHertz: 48000,
+        languageCode: 'en-US',
+        model: 'latest_long',
+        useEnhanced: true
+      };
+      
+      const request = {
+        audio: audio,
+        config: config
+      };
+      
+      const [response] = await client.recognize(request);
+      const transcription = response.results
+        .map(result => result.alternatives[0].transcript)
+        .join('\n');
+      
+      if (transcription && transcription.trim()) {
+        console.log(`🎤 SUCCESS! Google transcribed: "${transcription}"`);
+        return transcription.trim();
+      } else {
+        console.log('🎤 No speech detected by Google STT');
+      }
+      
+    } catch (googleError) {
+      console.log(`🎤 Google STT failed: ${googleError.message}`);
+      
+      // If Google also fails, return null instead of fake text
+      console.log('🎤 All STT services failed - no transcription available');
+      return null;
+    }
     
   } catch (error) {
     console.error('Deepgram error:', error);
@@ -719,40 +763,9 @@ async function processVoiceWithDeepgram(audioStream, userId, guildId, client) {
   }
 }
 
-// Fallback simulated voice-to-text (kept for backup)
-async function simulateVoiceToText(audioStream) {
-  // This is a placeholder - replace with actual voice-to-text service
-  // For testing, we'll return some sample text based on common voice inputs
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const sampleInputs = [
-        // Task-related
-        "I need to do my homework tonight",
-        "I should clean my room tomorrow",
-        "I have a meeting at 3 PM",
-        "I want to exercise this weekend",
-        "I must buy groceries after work",
-        "I need to call my mom",
-        "I should study for the test",
-        "I want to play games with friends",
-        "I need to organize my desk",
-        "I should practice guitar",
-        // General conversation
-        "How are you doing today?",
-        "What's the weather like?",
-        "Tell me a joke",
-        "What time is it?",
-        "How's your day going?",
-        "What can you help me with?",
-        "I'm feeling tired today",
-        "That's really interesting",
-        "Can you help me with something?",
-        "What's your favorite food?"
-      ];
-      resolve(sampleInputs[Math.floor(Math.random() * sampleInputs.length)]);
-    }, 300); // Even faster response for better feel
-  });
-}
+// REMOVED: Simulated voice-to-text to prevent fake responses
+// The bot will now only use real STT services (Deepgram + Google)
+// If all STT services fail, it will return null instead of fake text
 
 // Add task from voice input
 async function addTaskFromVoice(taskText, userId, guildId, client) {
