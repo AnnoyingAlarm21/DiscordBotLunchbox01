@@ -20,6 +20,7 @@
   "dependencies": {
     "@deepgram/sdk": "^1.21.0",
     "@discordjs/voice": "^0.16.1",
+    "@google-cloud/speech": "^7.2.0",
     "discord.js": "^14.14.1",
     "dotenv": "^16.3.1",
     "ffmpeg-static": "^5.2.0",
