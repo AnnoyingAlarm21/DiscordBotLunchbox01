@@ -707,6 +707,27 @@ async function processVoiceWithDeepgram(audioStream, userId, guildId, client) {
     console.log(`🎤 ALL AUDIO FORMATS FAILED. Audio buffer: ${audioBuffer.length} bytes`);
     console.log(`🎤 First 32 bytes: ${audioBuffer.slice(0, 32).toString('hex')}`);
     
+    // Analyze Discord audio format for debugging
+    console.log('🎤 Discord Audio Analysis:');
+    console.log(`🎤 Buffer length: ${audioBuffer.length} bytes`);
+    console.log(`🎤 First 16 bytes: ${audioBuffer.slice(0, 16).toString('hex')}`);
+    console.log(`🎤 Last 16 bytes: ${audioBuffer.slice(-16).toString('hex')}`);
+    
+    // Check if it looks like Opus (common Discord format)
+    if (audioBuffer.length > 0) {
+      const firstByte = audioBuffer[0];
+      console.log(`🎤 First byte: 0x${firstByte.toString(16)} (${firstByte})`);
+      
+      // Opus typically starts with specific patterns
+      if (firstByte === 0x4f || firstByte === 0x70) {
+        console.log('🎤 Audio might be Opus format');
+      } else if (firstByte === 0x52) {
+        console.log('🎤 Audio might be WAV format');
+      } else {
+        console.log('🎤 Audio format unknown - Discord proprietary format');
+      }
+    }
+    
     // Try Google Speech-to-Text as a working alternative
     try {
       console.log('🎤 Trying Google Speech-to-Text...');
@@ -750,7 +771,45 @@ async function processVoiceWithDeepgram(audioStream, userId, guildId, client) {
     } catch (googleError) {
       console.log(`🎤 Google STT failed: ${googleError.message}`);
       
-      // If Google also fails, return null instead of fake text
+      // Try one more approach - process Discord audio as raw PCM with different settings
+      try {
+        console.log('🎤 Trying Discord audio with alternative settings...');
+        
+        // Discord sends audio in a special format - try to decode it manually
+        const response = await deepgram.transcription.preRecorded({
+          buffer: audioBuffer,
+          mimetype: 'audio/raw',
+          options: {
+            model: 'nova-2',
+            language: 'en-US',
+            smart_format: true,
+            punctuate: true,
+            // Try different Discord audio settings
+            sample_rate: 48000,
+            channels: 1,
+            encoding: 'linear16',
+            // Add alternative processing options
+            diarize: false,
+            utterances: false,
+            punctuate: true,
+            smart_format: true
+          }
+        });
+        
+        const transcript = response.results?.channels[0]?.alternatives[0]?.transcript;
+        
+        if (transcript && transcript.trim()) {
+          console.log(`🎤 SUCCESS! Discord audio transcribed: "${transcript}"`);
+          return transcript.trim();
+        } else {
+          console.log('🎤 No speech detected in Discord audio');
+        }
+        
+      } catch (finalError) {
+        console.log(`🎤 Final Discord attempt failed: ${finalError.message}`);
+      }
+      
+      // If everything fails, return null instead of fake text
       console.log('🎤 All STT services failed - no transcription available');
       return null;
     }
