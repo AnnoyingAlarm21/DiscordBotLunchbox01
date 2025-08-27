@@ -22,6 +22,9 @@ const client = new Client({
 client.commands = new Collection();
 client.userTasks = new Map(); // Store tasks for each user
 
+// Store active conversation users
+client.activeConversations = new Set();
+
 // Load command files
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -190,6 +193,16 @@ client.on('messageCreate', async message => {
     }
     return;
   }
+  
+  // Check if user is in conversation mode
+  if (!client.activeConversations.has(message.author.id)) {
+    // User is not in conversation mode - don't respond to regular messages
+    console.log(`🔇 User ${message.author.username} is not in conversation mode - ignoring message`);
+    return;
+  }
+  
+  // User is in conversation mode - process their message
+  console.log(`💬 Processing conversation message from ${message.author.username}: "${message.content}"`);
   
   // Handle regular conversation - this is the key feature!
   const messageContent = message.content.toLowerCase().trim();
