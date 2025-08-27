@@ -291,7 +291,9 @@ client.on('messageCreate', async message => {
     'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
     'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice',
     'schedule', 'due', 'get done', 'finish', 'complete', 'submit', 'turn in',
-    'remind', 'set reminder', 'calendar', 'plan', 'organize', 'arrange'
+    'remind', 'set reminder', 'calendar', 'plan', 'organize', 'arrange',
+    'doctor', 'dentist', 'medical', 'checkup', 'exam', 'test', 'procedure',
+    'therapy', 'consultation', 'follow-up', 'surgery', 'treatment'
   ];
   
   const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
@@ -303,7 +305,7 @@ client.on('messageCreate', async message => {
     const cleanTaskText = processedTask.cleanText;
     const hasDeadline = processedTask.deadline !== null;
     
-    // Create a better task suggestion
+    // Create a better task suggestion - use the CLEANED text, not raw message
     let suggestionText = `🍱 That sounds like something for your lunchbox! Would you like me to add **"${cleanTaskText}"** as a task?`;
     
     if (hasDeadline) {
@@ -314,11 +316,11 @@ client.on('messageCreate', async message => {
     
     await message.reply(suggestionText);
     
-    // Store the processed task for this user
+    // Store the processed task for this user - store the CLEANED text
     if (!client.pendingTasks) client.pendingTasks = new Map();
     client.pendingTasks.set(message.author.id, {
       originalText: message.content,
-      cleanText: cleanTaskText,
+      cleanText: cleanTaskText,  // This is the cleaned version
       deadline: processedTask.deadline
     });
     

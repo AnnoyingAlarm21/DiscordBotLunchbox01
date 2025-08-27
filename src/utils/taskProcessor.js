@@ -9,7 +9,8 @@ const taskProcessor = {
       'deadline', 'due date', 'due time', 'at', 'pm', 'am',
       'i have something due', 'i have to schedule', 'i need to get this done by',
       'schedule this', 'due by', 'due on', 'get done by', 'finish by',
-      'yes', 'yeah', 'sure', 'ok', 'yep', 'and', 'also', 'make it'
+      'yes', 'yeah', 'sure', 'ok', 'yep', 'and', 'also', 'make it',
+      'no', 'not', 'is', 'are', 'was', 'were', 'will', 'would', 'could'
     ];
     
     let cleanedText = rawText.toLowerCase();
@@ -17,6 +18,24 @@ const taskProcessor = {
     // Remove filler phrases
     fillerPhrases.forEach(phrase => {
       cleanedText = cleanedText.replace(new RegExp(phrase, 'gi'), '');
+    });
+    
+    // Fix common misspellings and abbreviations
+    const spellingFixes = {
+      'appoint ment': 'appointment',
+      'tomoroor': 'tomorrow',
+      'dr ': 'doctor ',
+      'doc ': 'doctor ',
+      'apt ': 'appointment ',
+      'mtg ': 'meeting ',
+      'hw ': 'homework ',
+      'hw.': 'homework',
+      'hw?': 'homework',
+      'hw!': 'homework'
+    };
+    
+    Object.entries(spellingFixes).forEach(([wrong, correct]) => {
+      cleanedText = cleanedText.replace(new RegExp(wrong, 'gi'), correct);
     });
     
     // Extract time information
