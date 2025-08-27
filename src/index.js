@@ -116,6 +116,8 @@ client.once('ready', () => {
   // Add a simple startup health check that responds immediately
   setTimeout(() => {
     console.log('🔍 Performing startup health check verification...');
+    console.log(`🔍 Initial userTasks size: ${client.userTasks.size}`);
+    console.log(`🔍 Initial activeConversations size: ${client.activeConversations.size}`);
     // This will help Railway know the service is ready
   }, 2000);
   

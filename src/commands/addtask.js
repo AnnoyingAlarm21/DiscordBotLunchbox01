@@ -75,9 +75,15 @@ module.exports = {
       userData.tasks.push(task);
       userData.lastUpdated = new Date();
       
+      // Debug: Log what was saved
+      console.log(`💾 Task saved for user ${userId}:`, JSON.stringify(task, null, 2));
+      console.log(`💾 User now has ${userData.tasks.length} tasks total`);
+      console.log(`💾 All user tasks:`, JSON.stringify(userData.tasks, null, 2));
+      
       // Schedule reminders if there's a deadline
       if (deadline) {
         reminderSystem.scheduleReminders(client, userId, task.id, cleanTaskText, deadline.fullDate);
+        console.log(`⏰ Scheduled reminders for task: ${cleanTaskText} at ${deadline.fullDate}`);
       }
       
       // Create a beautiful embed response

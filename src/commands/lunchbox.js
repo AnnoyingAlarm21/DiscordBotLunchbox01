@@ -8,6 +8,17 @@ module.exports = {
   async execute(interaction, client) {
     const userId = interaction.user.id;
     
+    // Debug: Log what's in storage
+    console.log(`🔍 Lunchbox command called for user ${userId}`);
+    console.log(`🔍 client.userTasks has ${client.userTasks.size} users`);
+    console.log(`🔍 User ${userId} has data:`, client.userTasks.has(userId) ? 'YES' : 'NO');
+    
+    if (client.userTasks.has(userId)) {
+      const userData = client.userTasks.get(userId);
+      console.log(`🔍 User data structure:`, JSON.stringify(userData, null, 2));
+      console.log(`🔍 Tasks count:`, userData.tasks ? userData.tasks.length : 'NO TASKS ARRAY');
+    }
+    
     // Check if user has any tasks
     if (!client.userTasks.has(userId) || client.userTasks.get(userId).tasks.length === 0) {
       const emptyEmbed = new EmbedBuilder()
