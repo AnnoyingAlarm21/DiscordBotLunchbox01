@@ -135,8 +135,16 @@ module.exports = {
         }
       }
       
-      // Use AI to categorize the task
-      const category = await categorizeTask(cleanTaskText);
+      // Try AI categorization first, fallback to keyword-based if it fails
+      let category;
+      try {
+        category = await categorizeTask(cleanTaskText);
+        console.log(`🤖 AI categorized task as: ${category}`);
+      } catch (aiError) {
+        console.error('AI categorization failed, using fallback:', aiError);
+        category = fallbackCategorization(cleanTaskText);
+        console.log(`🔄 Fallback categorized task as: ${category}`);
+      }
       
       // Create the task object with new fields
       const task = {
@@ -293,6 +301,12 @@ function parseTimeString(timeString) {
 // AI-powered task categorization
 async function categorizeTask(taskContent) {
   try {
+    // Check if Groq API key is available
+    if (!process.env.GROQ_API_KEY) {
+      console.log('⚠️ No GROQ_API_KEY found, using fallback categorization');
+      throw new Error('No GROQ_API_KEY available');
+    }
+    
     const prompt = `Categorize this task into one of these food categories:
 
 🍪 Sweets: Things you want to do - fun and enjoyable tasks
@@ -311,14 +325,15 @@ Respond with ONLY the category name (e.g., "🍪 Sweets" or "🥦 Vegetables").`
       temperature: 0.3
     });
 
-    const response = completion.choices[0].message.content.trim();
+    const response = completion.choices[0]?.message?.content?.trim();
     
     // Validate the response is a valid category
     if (TASK_CATEGORIES[response]) {
       return response;
     }
     
-    // Fallback categorization based on keywords
+    console.log(`⚠️ AI returned invalid category: "${response}", using fallback`);
+    // Fallback to keyword-based categorization
     return fallbackCategorization(taskContent);
     
   } catch (error) {
@@ -333,16 +348,24 @@ function fallbackCategorization(taskContent) {
   const lowerTask = taskContent.toLowerCase();
   
   // Keywords for each category
-  const sweets = ['fun', 'enjoy', 'play', 'game', 'hobby', 'creative', 'art', 'music', 'watch', 'read'];
-  const vegetables = ['need', 'must', 'important', 'urgent', 'deadline', 'work', 'study', 'homework', 'project', 'meeting'];
-  const savory = ['clean', 'organize', 'plan', 'schedule', 'exercise', 'cook', 'shop', 'errand', 'maintenance'];
-  const sides = ['relax', 'rest', 'break', 'social', 'chat', 'browse', 'check', 'quick', 'simple'];
+  const sweets = ['fun', 'enjoy', 'play', 'game', 'hobby', 'creative', 'art', 'music', 'watch', 'read', 'entertainment', 'leisure', 'relax'];
+  const vegetables = ['need', 'must', 'important', 'urgent', 'deadline', 'work', 'study', 'homework', 'project', 'meeting', 'appointment', 'doctor', 'medical', 'call', 'email', 'submit', 'due'];
+  const savory = ['clean', 'organize', 'plan', 'schedule', 'exercise', 'cook', 'shop', 'errand', 'maintenance', 'repair', 'buy', 'purchase', 'arrange', 'setup'];
+  const sides = ['relax', 'rest', 'break', 'social', 'chat', 'browse', 'check', 'quick', 'simple', 'casual', 'optional', 'extra'];
   
-  if (sweets.some(keyword => lowerTask.includes(keyword))) return '🍪 Sweets';
+  // Check for specific keywords first
   if (vegetables.some(keyword => lowerTask.includes(keyword))) return '🥦 Vegetables';
   if (savory.some(keyword => lowerTask.includes(keyword))) return '🥪 Savory';
+  if (sweets.some(keyword => lowerTask.includes(keyword))) return '🍪 Sweets';
   if (sides.some(keyword => lowerTask.includes(keyword))) return '🧃 Sides';
   
-  // Default to savory if no clear match
+  // Handle vague descriptions like "something", "task", "thing", etc.
+  const vagueWords = ['something', 'thing', 'task', 'item', 'stuff', 'work', 'job', 'activity'];
+  if (vagueWords.some(word => lowerTask.includes(word))) {
+    // Default vague tasks to Savory (neutral but useful)
+    return '🥪 Savory';
+  }
+  
+  // If no keywords match, use Savory as default (neutral category)
   return '🥪 Savory';
 }
