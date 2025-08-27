@@ -227,9 +227,24 @@ client.on('messageCreate', async message => {
     const response = messageContent;
     
     if (response.includes('yes') || response.includes('yeah') || response.includes('sure') || response.includes('ok') || response.includes('yep')) {
-      // User wants to add the task
-      const taskText = pendingTaskData.cleanText || pendingTaskData.originalText || pendingTaskData;
-      await message.reply(`🍱 Great! Adding **"${taskText}"** to your lunchbox...`);
+      // Check if user added deadline information in their confirmation
+      const deadlineUpdate = taskProcessor.cleanTaskText(message.content);
+      const hasDeadlineUpdate = deadlineUpdate.deadline !== null;
+      
+      // Combine original task with any deadline updates
+      let finalTaskText = pendingTaskData.cleanText || pendingTaskData.originalText || pendingTaskData;
+      let finalDeadline = pendingTaskData.deadline;
+      
+      if (hasDeadlineUpdate) {
+        // User provided deadline in confirmation - update the task
+        finalTaskText = `${finalTaskText} (${deadlineUpdate.cleanText})`;
+        finalDeadline = deadlineUpdate.deadline;
+        
+        await message.reply(`🍱 Perfect! Adding **"${finalTaskText}"** with deadline **${finalDeadline.fullDate.toLocaleString()}** to your lunchbox...`);
+      } else {
+        // No deadline update - use original task
+        await message.reply(`🍱 Great! Adding **"${finalTaskText}"** to your lunchbox...`);
+      }
       
       // Use the addTask command logic
       const addTaskCommand = client.commands.get('addtask');
@@ -242,7 +257,7 @@ client.on('messageCreate', async message => {
             followUp: message.reply.bind(message),
             options: {
               getString: (optionName) => {
-                if (optionName === 'task') return taskText;
+                if (optionName === 'task') return finalTaskText;
                 return null;
               }
             },

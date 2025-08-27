@@ -8,7 +8,8 @@ const taskProcessor = {
       'can you', 'please', 'remind me', 'set a reminder',
       'deadline', 'due date', 'due time', 'at', 'pm', 'am',
       'i have something due', 'i have to schedule', 'i need to get this done by',
-      'schedule this', 'due by', 'due on', 'get done by', 'finish by'
+      'schedule this', 'due by', 'due on', 'get done by', 'finish by',
+      'yes', 'yeah', 'sure', 'ok', 'yep', 'and', 'also', 'make it'
     ];
     
     let cleanedText = rawText.toLowerCase();
