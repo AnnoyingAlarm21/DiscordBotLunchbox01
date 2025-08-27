@@ -69,9 +69,27 @@ module.exports = {
           .map(task => {
             const status = task.completed ? '✅' : '⏳';
             const timeAgo = `<t:${Math.floor(task.createdAt.getTime() / 1000)}:R>`;
-            return `${status} **${task.content}** (${timeAgo})`;
+            
+            // Add priority indicator
+            const priorityEmojis = {
+              'low': '🟢',
+              'medium': '🟡', 
+              'high': '🟠',
+              'defcon0': '🔴'
+            };
+            const priorityEmoji = priorityEmojis[task.priority] || '🟡';
+            
+            let taskDisplay = `${status} ${priorityEmoji} **${task.content}** (${timeAgo})`;
+            
+            // Add deadline info if exists
+            if (task.deadline) {
+              const deadline = new Date(task.deadline.fullDate);
+              taskDisplay += `\n⏰ Due: <t:${Math.floor(deadline.getTime() / 1000)}:F>`;
+            }
+            
+            return taskDisplay;
           })
-          .join('\n');
+          .join('\n\n');
         
         embed.addFields({
           name: `${category} (${categoryTasks.length})`,
