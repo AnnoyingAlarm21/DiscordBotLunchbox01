@@ -272,7 +272,9 @@ client.on('messageCreate', async message => {
     'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
     'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
     'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
-    'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice'
+    'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice',
+    'schedule', 'due', 'get done', 'finish', 'complete', 'submit', 'turn in',
+    'remind', 'set reminder', 'calendar', 'plan', 'organize', 'arrange'
   ];
   
   const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));

@@ -90,6 +90,21 @@ module.exports = {
           inline: false
         },
         {
+          name: '/conversate',
+          value: 'Start an AI conversation with Lunchbox - every message you type will be processed by AI',
+          inline: false
+        },
+        {
+          name: '/endconversation',
+          value: 'End your AI conversation with Lunchbox',
+          inline: false
+        },
+        {
+          name: '/calendar [view]',
+          value: 'View your scheduled tasks in a calendar format (today/week/month/all)',
+          inline: false
+        },
+        {
           name: '/help',
           value: 'Show this help message (you\'re here!)',
           inline: false
@@ -98,7 +113,7 @@ module.exports = {
       .addFields(
         {
           name: '💡 Quick Tips',
-          value: '• You can also mention the bot or use the prefix (!) to add tasks\n• Tasks are automatically categorized using AI\n• **NEW: Voice commands!** Use `/voice listen` to create tasks by speaking\n• Keep your lunchbox balanced for maximum productivity\n• Complete tasks to unlock achievements!',
+          value: '• You can also mention the bot or use the prefix (!) to add tasks\n• Tasks are automatically categorized using AI\n• **NEW: Voice commands!** Use `/voice listen` to create tasks by speaking\n• **NEW: Smart scheduling!** Use natural language like "due tomorrow", "by Friday", "this week"\n• Keep your lunchbox balanced for maximum productivity\n• Complete tasks to unlock achievements!',
           inline: false
         },
         {
