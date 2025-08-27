@@ -3,6 +3,7 @@ const { config } = require('dotenv');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+const taskProcessor = require('./utils/taskProcessor');
 
 // Load environment variables from .env file
 config();
@@ -24,6 +25,9 @@ client.userTasks = new Map(); // Store tasks for each user
 
 // Store active conversation users
 client.activeConversations = new Set();
+
+// Make reminder system globally accessible
+global.reminderSystem = require('./utils/reminderSystem');
 
 // Load command files
 const commandsPath = path.join(__dirname, 'commands');
@@ -114,6 +118,13 @@ client.once('ready', () => {
     console.log('🔍 Performing startup health check verification...');
     // This will help Railway know the service is ready
   }, 2000);
+  
+  // Set up periodic reminder cleanup (every 5 minutes)
+  setInterval(() => {
+    if (global.reminderSystem) {
+      global.reminderSystem.cleanupExpiredReminders();
+    }
+  }, 5 * 60 * 1000);
 });
 
 // Handle slash command interactions
@@ -212,32 +223,33 @@ client.on('messageCreate', async message => {
   
   // Check if this is a response to a pending task question
   if (client.pendingTasks && client.pendingTasks.has(message.author.id)) {
-    const pendingTask = client.pendingTasks.get(message.author.id);
+    const pendingTaskData = client.pendingTasks.get(message.author.id);
     const response = messageContent;
     
     if (response.includes('yes') || response.includes('yeah') || response.includes('sure') || response.includes('ok') || response.includes('yep')) {
       // User wants to add the task
-      await message.reply(`🍱 Great! Adding "${pendingTask}" to your lunchbox...`);
+      const taskText = pendingTaskData.cleanText || pendingTaskData.originalText || pendingTaskData;
+      await message.reply(`🍱 Great! Adding **"${taskText}"** to your lunchbox...`);
       
       // Use the addTask command logic
       const addTaskCommand = client.commands.get('addtask');
       if (addTaskCommand) {
         try {
-                  const mockInteraction = {
-          user: message.author,
-          guildId: message.guild?.id,
-          reply: message.reply.bind(message),
-          followUp: message.reply.bind(message),
-          options: {
-            getString: (optionName) => {
-              if (optionName === 'task') return pendingTask;
-              return null;
-            }
-          },
-          isRepliable: () => true,
-          deferred: false,
-          replied: false
-        };
+          const mockInteraction = {
+            user: message.author,
+            guildId: message.guild?.id,
+            reply: message.reply.bind(message),
+            followUp: message.reply.bind(message),
+            options: {
+              getString: (optionName) => {
+                if (optionName === 'task') return taskText;
+                return null;
+              }
+            },
+            isRepliable: () => true,
+            deferred: false,
+            replied: false
+          };
           
           await addTaskCommand.execute(mockInteraction, client);
           client.pendingTasks.delete(message.author.id); // Clear the pending task
@@ -267,12 +279,29 @@ client.on('messageCreate', async message => {
   
   // Only suggest tasks if it's clearly task-related AND not just casual conversation
   if (hasTaskKeywords && isClearlyTaskRelated(messageContent)) {
-    // This looks like a task! Ask if they want to add it
-    await message.reply(`🍱 That sounds like something for your lunchbox! Would you like me to add "${message.content}" as a task?`);
+    // Process the task text to clean it up
+    const processedTask = taskProcessor.cleanTaskText(message.content);
+    const cleanTaskText = processedTask.cleanText;
+    const hasDeadline = processedTask.deadline !== null;
     
-    // Store the potential task for this user
+    // Create a better task suggestion
+    let suggestionText = `🍱 That sounds like something for your lunchbox! Would you like me to add **"${cleanTaskText}"** as a task?`;
+    
+    if (hasDeadline) {
+      const deadline = processedTask.deadline;
+      suggestionText += `\n\n⏰ **Deadline detected:** ${deadline.fullDate.toLocaleString()}`;
+      suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
+    }
+    
+    await message.reply(suggestionText);
+    
+    // Store the processed task for this user
     if (!client.pendingTasks) client.pendingTasks = new Map();
-    client.pendingTasks.set(message.author.id, message.content);
+    client.pendingTasks.set(message.author.id, {
+      originalText: message.content,
+      cleanText: cleanTaskText,
+      deadline: processedTask.deadline
+    });
     
   } else {
     // Regular conversation - use Groq AI for intelligent responses
@@ -287,12 +316,20 @@ client.login(process.env.DISCORD_TOKEN);
 // Graceful shutdown handling for Railway
 process.on('SIGTERM', () => {
   console.log('🔄 Received SIGTERM, shutting down gracefully...');
+  // Clean up all active reminders
+  if (global.reminderSystem) {
+    global.reminderSystem.cleanupExpiredReminders();
+  }
   client.destroy();
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   console.log('🔄 Received SIGINT, shutting down gracefully...');
+  // Clean up all active reminders
+  if (global.reminderSystem) {
+    global.reminderSystem.cleanupExpiredReminders();
+  }
   client.destroy();
   process.exit(0);
 });

@@ -1,5 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const Groq = require('groq-sdk');
+const taskProcessor = require('../utils/taskProcessor');
+const reminderSystem = require('../utils/reminderSystem');
 
 // Initialize Groq client
 const groq = new Groq({
@@ -37,7 +39,7 @@ module.exports = {
     ),
 
   async execute(interaction, client) {
-    const taskContent = interaction.options.getString('task');
+    const rawTaskContent = interaction.options.getString('task');
     const userId = interaction.user.id;
     
     // Initialize user's task storage if it doesn't exist
@@ -49,16 +51,23 @@ module.exports = {
     }
     
     try {
+      // Process and clean the task text
+      const processedTask = taskProcessor.cleanTaskText(rawTaskContent);
+      const cleanTaskText = processedTask.cleanText;
+      const deadline = processedTask.deadline;
+      
       // Use AI to categorize the task
-      const category = await categorizeTask(taskContent);
+      const category = await categorizeTask(cleanTaskText);
       
       // Create the task object
       const task = {
         id: Date.now(),
-        content: taskContent,
+        content: cleanTaskText,
+        originalContent: rawTaskContent,
         category: category,
         createdAt: new Date(),
-        completed: false
+        completed: false,
+        deadline: deadline
       };
       
       // Add task to user's lunchbox
@@ -66,11 +75,16 @@ module.exports = {
       userData.tasks.push(task);
       userData.lastUpdated = new Date();
       
+      // Schedule reminders if there's a deadline
+      if (deadline) {
+        reminderSystem.scheduleReminders(client, userId, task.id, cleanTaskText, deadline.fullDate);
+      }
+      
       // Create a beautiful embed response
       const embed = new EmbedBuilder()
         .setColor(TASK_CATEGORIES[category].color)
         .setTitle('🍱 Task Added to Your Lunchbox!')
-        .setDescription(`**${taskContent}**`)
+        .setDescription(`**${cleanTaskText}**`)
         .addFields(
           { name: '📂 Category', value: `${category}\n${TASK_CATEGORIES[category].description}`, inline: true },
           { name: '⏰ Added', value: `<t:${Math.floor(task.createdAt.getTime() / 1000)}:R>`, inline: true },
@@ -78,6 +92,15 @@ module.exports = {
         )
         .setFooter({ text: 'Your lunchbox is getting organized! 🥪' })
         .setTimestamp();
+      
+      // Add deadline field if present
+      if (deadline) {
+        embed.addFields({
+          name: '⏰ Deadline',
+          value: `<t:${Math.floor(deadline.fullDate.getTime() / 1000)}:F>\nReminders set for 10 min, 5 min, and exact time!`,
+          inline: false
+        });
+      }
       
       await interaction.reply({ embeds: [embed] });
       
