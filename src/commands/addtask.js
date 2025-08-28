@@ -107,6 +107,10 @@ module.exports = {
     const scheduledTime = interaction.options.getString('time');
     const customTime = interaction.options.getString('custom_time');
     const priority = interaction.options.getString('priority');
+    
+    // Use custom time if time is set to "custom"
+    const finalTimeOption = (scheduledTime === 'custom' && customTime) ? customTime : scheduledTime;
+    
     const userId = interaction.user.id;
     
     // Initialize user's task storage if it doesn't exist
