@@ -4,24 +4,10 @@ const taskProcessor = {
   cleanTaskText(rawText) {
     console.log(`🔍 TaskProcessor: Processing raw text: "${rawText}"`);
     
-    // Remove only essential filler words, keep important context
-    const fillerPhrases = [
-      'can you', 'please', 'remind me', 'set a reminder',
-      'deadline', 'due date', 'due time', 'get done by', 'finish by',
-      'yes', 'yeah', 'sure', 'ok', 'yep', 'and', 'also', 'make it',
-      'no', 'not', 'is', 'are', 'was', 'were', 'will', 'would', 'could'
-    ];
-    
     let cleanedText = rawText.toLowerCase();
     console.log(`🔍 TaskProcessor: After lowercase: "${cleanedText}"`);
     
-    // Remove only essential filler phrases
-    fillerPhrases.forEach(phrase => {
-      cleanedText = cleanedText.replace(new RegExp(phrase, 'gi'), '');
-    });
-    console.log(`🔍 TaskProcessor: After removing fillers: "${cleanedText}"`);
-    
-    // Fix common misspellings and abbreviations
+    // Fix common misspellings FIRST (before any other processing)
     const spellingFixes = {
       'seesion': 'session',
       'appoint ment': 'appointment',
@@ -41,7 +27,7 @@ const taskProcessor = {
     });
     console.log(`🔍 TaskProcessor: After spelling fixes: "${cleanedText}"`);
     
-    // Extract time information BEFORE cleaning
+    // Extract time information BEFORE any text cleaning
     const timeMatch = cleanedText.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)/i);
     let extractedTime = null;
     let extractedDate = null;
@@ -70,8 +56,18 @@ const taskProcessor = {
       console.log(`🔍 TaskProcessor: Extracted date: ${extractedDate.toLocaleString()}`);
     }
     
+    // NOW do minimal text cleaning - only remove truly unnecessary words
+    // Split into words and filter out only the most basic fillers
+    const words = cleanedText.split(/\s+/).filter(word => {
+      // Keep all meaningful words, only remove very basic fillers
+      const basicFillers = ['and', 'or', 'but', 'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'];
+      return !basicFillers.includes(word.toLowerCase()) && word.length > 0;
+    });
+    
+    console.log(`🔍 TaskProcessor: After word filtering: "${words.join(' ')}"`);
+    
     // Clean up the task text
-    cleanedText = cleanedText
+    cleanedText = words.join(' ')
       .replace(/\s+/g, ' ') // Remove extra spaces
       .trim();
     
