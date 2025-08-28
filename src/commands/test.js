@@ -40,6 +40,41 @@ module.exports = {
       });
     }
     
+    // Test conversation context
+    if (client.conversationContext && client.conversationContext.has(userId)) {
+      const convContext = client.conversationContext.get(userId);
+      const messageCount = convContext.messages ? convContext.messages.length : 0;
+      const lastTaskContext = convContext.lastTaskContext || 'None';
+      
+      testEmbed.addFields({
+        name: '💬 Conversation Context',
+        value: `Messages: ${messageCount}\nLast Task Context: ${lastTaskContext}`,
+        inline: false
+      });
+    } else {
+      testEmbed.addFields({
+        name: '💬 Conversation Context',
+        value: 'No conversation context found (this is normal for new users)',
+        inline: false
+      });
+    }
+    
+    // Test pending tasks
+    if (client.pendingTasks && client.pendingTasks.has(userId)) {
+      const pendingTask = client.pendingTasks.get(userId);
+      testEmbed.addFields({
+        name: '⏳ Pending Tasks',
+        value: `Task: ${pendingTask.cleanText || pendingTask.originalText}\nDeadline: ${pendingTask.deadline ? 'Yes' : 'No'}`,
+        inline: false
+      });
+    } else {
+      testEmbed.addFields({
+        name: '⏳ Pending Tasks',
+        value: 'No pending tasks',
+        inline: false
+      });
+    }
+    
     // Test environment variables
     const envTests = {
       'GROQ_API_KEY': process.env.GROQ_API_KEY ? '✅ Set' : '❌ Missing',

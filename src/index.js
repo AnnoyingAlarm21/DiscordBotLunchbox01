@@ -26,6 +26,12 @@ client.userTasks = new Map(); // Store tasks for each user
 // Store active conversation users
 client.activeConversations = new Set();
 
+// Store conversation context for each user
+client.conversationContext = new Map();
+
+// Store pending tasks for confirmation
+client.pendingTasks = new Map();
+
 // Make reminder system globally accessible
 global.reminderSystem = require('./utils/reminderSystem');
 
@@ -324,6 +330,18 @@ client.on('messageCreate', async message => {
       deadline: processedTask.deadline
     });
     
+    // Also store in conversation context for AI to remember
+    if (!client.conversationContext.has(message.author.id)) {
+      client.conversationContext.set(message.author.id, {
+        messages: [],
+        lastTaskContext: null,
+        userPreferences: {},
+        conversationStart: new Date()
+      });
+    }
+    const userContext = client.conversationContext.get(message.author.id);
+    userContext.lastTaskContext = cleanTaskText;
+    
   } else {
     // Regular conversation - use Groq AI for intelligent responses
     console.log(`💬 Going to AI conversation handler for: "${messageContent}"`);
@@ -549,30 +567,85 @@ async function handleAIConversation(message, messageContent, client) {
       apiKey: process.env.GROQ_API_KEY,
     });
     
-    // Create a context-aware prompt
-    const prompt = `You are Lunchbox, a friendly and helpful AI productivity assistant. You help organize tasks into fun food categories (🍪 Sweets, 🥦 Vegetables, 🥪 Savory, 🧃 Sides) but you're also great at general conversation.
+    // Get or create conversation context for this user
+    const userId = message.author.id;
+    if (!client.conversationContext.has(userId)) {
+      client.conversationContext.set(userId, {
+        messages: [],
+        lastTaskContext: null,
+        userPreferences: {},
+        conversationStart: new Date()
+      });
+    }
+    
+    const userContext = client.conversationContext.get(userId);
+    
+    // Add current message to context
+    userContext.messages.push({
+      role: "user",
+      content: messageContent,
+      timestamp: new Date()
+    });
+    
+    // Keep only last 10 messages to avoid token limits
+    if (userContext.messages.length > 10) {
+      userContext.messages = userContext.messages.slice(-10);
+    }
+    
+    // Check if this is a response to a previous task suggestion
+    const isTaskResponse = userContext.lastTaskContext && 
+      (messageContent.toLowerCase().includes('yes') || 
+       messageContent.toLowerCase().includes('yeah') || 
+       messageContent.toLowerCase().includes('sure') || 
+       messageContent.toLowerCase().includes('ok') || 
+       messageContent.toLowerCase().includes('yep') ||
+       messageContent.toLowerCase().includes('please'));
+    
+    // Create context-aware prompt
+    let systemPrompt = `You are Lunchbox, a friendly and helpful AI productivity assistant. You help organize tasks into fun food categories (🍪 Sweets, 🥦 Vegetables, 🥪 Savory, 🧃 Sides) but you're also great at general conversation.
 
-User: ${messageContent}
+IMPORTANT: Maintain conversation context and remember what the user said previously.`;
 
-Respond naturally and helpfully. If they're asking for information, provide it. If they want to chat, be engaging. If they mention something that could be a task, gently suggest adding it to their lunchbox. Keep responses conversational and under 200 words.`;
+    if (isTaskResponse && userContext.lastTaskContext) {
+      systemPrompt += `\n\nCONTEXT: The user just said "${messageContent}" in response to your suggestion about adding "${userContext.lastTaskContext}" to their lunchbox. They want you to add this task.`;
+    }
+    
+    systemPrompt += `\n\nRespond naturally and helpfully. If they're asking for information, provide it. If they want to chat, be engaging. If they mention something that could be a task, gently suggest adding it to their lunchbox. Keep responses conversational and under 200 words.`;
 
+    // Build conversation history for context
+    const conversationHistory = userContext.messages.slice(-5).map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }));
+    
+    // Add system message
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...conversationHistory
+    ];
+    
+    console.log(`🤖 Sending to Groq with ${messages.length} messages for context`);
+    
     const completion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: "You are Lunchbox, a friendly AI productivity assistant who helps organize tasks and chats naturally with users."
-        },
-        {
-          role: "user", 
-          content: messageContent
-        }
-      ],
+      messages: messages,
       model: "llama3-8b-8192",
       temperature: 0.7,
       max_tokens: 300,
     });
 
     const aiResponse = completion.choices[0]?.message?.content || "🍱 That's interesting! I'm here to help with productivity and chat about anything. What's on your mind?";
+    
+    // Add AI response to context
+    userContext.messages.push({
+      role: "assistant",
+      content: aiResponse,
+      timestamp: new Date()
+    });
+    
+    // If this was a task response, clear the task context
+    if (isTaskResponse) {
+      userContext.lastTaskContext = null;
+    }
     
     await message.reply(aiResponse);
     
