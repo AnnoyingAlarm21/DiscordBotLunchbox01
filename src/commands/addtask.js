@@ -54,7 +54,39 @@ module.exports = {
     )
     .addStringOption(option =>
       option.setName('time')
-        .setDescription('What time is this task due? (e.g., 3pm, 15:30)')
+        .setDescription('What time is this task due?')
+        .setRequired(false)
+        .addChoices(
+          { name: '12:00 AM (Midnight)', value: '12:00 AM' },
+          { name: '1:00 AM', value: '1:00 AM' },
+          { name: '2:00 AM', value: '2:00 AM' },
+          { name: '3:00 AM', value: '3:00 AM' },
+          { name: '4:00 AM', value: '4:00 AM' },
+          { name: '5:00 AM', value: '5:00 AM' },
+          { name: '6:00 AM', value: '6:00 AM' },
+          { name: '7:00 AM', value: '7:00 AM' },
+          { name: '8:00 AM', value: '8:00 AM' },
+          { name: '9:00 AM', value: '9:00 AM' },
+          { name: '10:00 AM', value: '10:00 AM' },
+          { name: '11:00 AM', value: '11:00 AM' },
+          { name: '12:00 PM (Noon)', value: '12:00 PM' },
+          { name: '1:00 PM', value: '1:00 PM' },
+          { name: '2:00 PM', value: '2:00 PM' },
+          { name: '3:00 PM', value: '3:00 PM' },
+          { name: '4:00 PM', value: '4:00 PM' },
+          { name: '5:00 PM', value: '5:00 PM' },
+          { name: '6:00 PM', value: '6:00 PM' },
+          { name: '7:00 PM', value: '7:00 PM' },
+          { name: '8:00 PM', value: '8:00 PM' },
+          { name: '9:00 PM', value: '9:00 PM' },
+          { name: '10:00 PM', value: '10:00 PM' },
+          { name: '11:00 PM', value: '11:00 PM' },
+          { name: 'Custom Time (e.g., 2:30 PM)', value: 'custom' }
+        )
+    )
+    .addStringOption(option =>
+      option.setName('custom_time')
+        .setDescription('Enter custom time (e.g., 2:30 PM, 14:30, 3pm) - only needed if you selected "Custom Time" above')
         .setRequired(false)
     )
     .addStringOption(option =>
@@ -73,6 +105,7 @@ module.exports = {
     const rawTaskContent = interaction.options.getString('task');
     const scheduledDate = interaction.options.getString('date');
     const scheduledTime = interaction.options.getString('time');
+    const customTime = interaction.options.getString('custom_time');
     const priority = interaction.options.getString('priority');
     const userId = interaction.user.id;
     
@@ -102,8 +135,8 @@ module.exports = {
           };
           
           // If time is provided, add it to the date
-          if (scheduledTime) {
-            const timeInfo = this.parseTimeString(scheduledTime);
+          if (finalTimeOption) {
+            const timeInfo = this.parseTimeString(finalTimeOption);
             if (timeInfo) {
               finalDeadline.time = timeInfo;
               finalDeadline.fullDate = new Date(
@@ -116,9 +149,9 @@ module.exports = {
             }
           }
         }
-      } else if (scheduledTime && !finalDeadline) {
-        // Only time provided, use today's date
-        const timeInfo = this.parseTimeString(scheduledTime);
+              } else if (finalTimeOption && !finalDeadline) {
+          // Only time provided, use today's date
+          const timeInfo = this.parseTimeString(finalTimeOption);
         if (timeInfo) {
           const today = new Date();
           finalDeadline = {
@@ -157,7 +190,7 @@ module.exports = {
         deadline: finalDeadline,
         priority: priority || 'medium',
         scheduledDate: scheduledDate,
-        scheduledTime: scheduledTime
+        scheduledTime: finalTimeOption
       };
       
       // Add task to user's lunchbox
@@ -213,13 +246,13 @@ module.exports = {
       }
       
       // Add scheduling info if provided
-      if (scheduledDate || scheduledTime) {
+              if (scheduledDate || finalTimeOption) {
         let schedulingInfo = '';
         if (scheduledDate && scheduledDate !== 'custom') {
           schedulingInfo += `📅 **Date:** ${scheduledDate.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}\n`;
         }
-        if (scheduledTime) {
-          schedulingInfo += `🕐 **Time:** ${scheduledTime}`;
+        if (finalTimeOption) {
+          schedulingInfo += `🕐 **Time:** ${finalTimeOption}`;
         }
         
         if (schedulingInfo) {
@@ -240,63 +273,74 @@ module.exports = {
         ephemeral: true
       });
     }
-  }
-};
+  },
 
-// Helper function to calculate scheduled dates
-function calculateScheduledDate(dateOption) {
-  const now = new Date();
-  
-  switch (dateOption) {
-    case 'today':
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    case 'tomorrow':
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    case 'after_tomorrow':
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
-    case 'this_week':
-      const daysUntilFriday = (5 - now.getDay() + 7) % 7;
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilFriday);
-    case 'next_week':
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
-    case 'this_month':
-      return new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day of current month
-    case 'next_month':
-      return new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
-    default:
-      return null;
-  }
-}
+  // Helper function to calculate scheduled dates
+  calculateScheduledDate(dateOption) {
+    const now = new Date();
+    
+    switch (dateOption) {
+      case 'today':
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      case 'tomorrow':
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      case 'after_tomorrow':
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
+      case 'this_week':
+        const daysUntilFriday = (5 - now.getDay() + 7) % 7;
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilFriday);
+      case 'next_week':
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
+      case 'this_month':
+        return new Date(now.getFullYear(), now.getMonth() + 1, 0); // Last day of current month
+      case 'next_month':
+        return new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+      default:
+        return null;
+    }
+  },
 
-// Helper function to parse time strings
-function parseTimeString(timeString) {
-  // Handle 12-hour format (3pm, 3:30pm, 3:30 PM)
-  const time12Hour = timeString.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)/i);
-  if (time12Hour) {
-    const hour = parseInt(time12Hour[1]);
-    const minute = time12Hour[2] ? parseInt(time12Hour[2]) : 0;
-    const period = time12Hour[3].toLowerCase();
+  // Parse time string into hour and minute
+  parseTimeString(timeString) {
+    if (!timeString) return null;
     
-    let hour24 = hour;
-    if (period === 'pm' && hour !== 12) hour24 += 12;
-    if (period === 'am' && hour === 12) hour24 = 0;
-    
-    return { hour: hour24, minute };
-  }
-  
-  // Handle 24-hour format (15:30, 15.30, 1530)
-  const time24Hour = timeString.match(/(\d{1,2})[:.]?(\d{2})/);
-  if (time24Hour) {
-    const hour = parseInt(time24Hour[1]);
-    const minute = parseInt(time24Hour[2]);
-    
-    if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+    // Handle preset time format (e.g., "5:00 PM", "12:00 AM")
+    const presetTimeMatch = timeString.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (presetTimeMatch) {
+      let hour = parseInt(presetTimeMatch[1]);
+      const minute = parseInt(presetTimeMatch[2]);
+      const period = presetTimeMatch[3].toUpperCase();
+      
+      // Convert 12-hour to 24-hour format
+      if (period === 'PM' && hour !== 12) {
+        hour += 12;
+      } else if (period === 'AM' && hour === 12) {
+        hour = 0;
+      }
+      
       return { hour, minute };
     }
+    
+    // Handle legacy formats (e.g., "3pm", "15:30")
+    const timeMatch = timeString.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i);
+    if (timeMatch) {
+      let hour = parseInt(timeMatch[1]);
+      const minute = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+      const period = timeMatch[3] ? timeMatch[3].toUpperCase() : null;
+      
+      // Convert 12-hour to 24-hour format
+      if (period === 'PM' && hour !== 12) {
+        hour += 12;
+      } else if (period === 'AM' && hour === 12) {
+        hour = 0;
+      }
+      
+      return { hour, minute };
+    }
+    
+    return null;
   }
-  
-  return null;
-}
+};
 
 // AI-powered task categorization
 async function categorizeTask(taskContent) {
