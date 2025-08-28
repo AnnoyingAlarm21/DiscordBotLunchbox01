@@ -2,26 +2,28 @@
 const taskProcessor = {
   // Clean up task text: fix spelling, capitalization, extract core task
   cleanTaskText(rawText) {
-    // Remove common filler words and phrases
+    console.log(`🔍 TaskProcessor: Processing raw text: "${rawText}"`);
+    
+    // Remove only essential filler words, keep important context
     const fillerPhrases = [
-      'i have a', 'i need to', 'i want to', 'i should', 'i must',
       'can you', 'please', 'remind me', 'set a reminder',
-      'deadline', 'due date', 'due time', 'at', 'pm', 'am',
-      'i have something due', 'i have to schedule', 'i need to get this done by',
-      'schedule this', 'due by', 'due on', 'get done by', 'finish by',
+      'deadline', 'due date', 'due time', 'get done by', 'finish by',
       'yes', 'yeah', 'sure', 'ok', 'yep', 'and', 'also', 'make it',
       'no', 'not', 'is', 'are', 'was', 'were', 'will', 'would', 'could'
     ];
     
     let cleanedText = rawText.toLowerCase();
+    console.log(`🔍 TaskProcessor: After lowercase: "${cleanedText}"`);
     
-    // Remove filler phrases
+    // Remove only essential filler phrases
     fillerPhrases.forEach(phrase => {
       cleanedText = cleanedText.replace(new RegExp(phrase, 'gi'), '');
     });
+    console.log(`🔍 TaskProcessor: After removing fillers: "${cleanedText}"`);
     
     // Fix common misspellings and abbreviations
     const spellingFixes = {
+      'seesion': 'session',
       'appoint ment': 'appointment',
       'tomoroor': 'tomorrow',
       'dr ': 'doctor ',
@@ -37,8 +39,9 @@ const taskProcessor = {
     Object.entries(spellingFixes).forEach(([wrong, correct]) => {
       cleanedText = cleanedText.replace(new RegExp(wrong, 'gi'), correct);
     });
+    console.log(`🔍 TaskProcessor: After spelling fixes: "${cleanedText}"`);
     
-    // Extract time information
+    // Extract time information BEFORE cleaning
     const timeMatch = cleanedText.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)/i);
     let extractedTime = null;
     let extractedDate = null;
@@ -54,10 +57,18 @@ const taskProcessor = {
       if (period === 'am' && hour === 12) hour24 = 0;
       
       extractedTime = { hour: hour24, minute };
+      console.log(`🔍 TaskProcessor: Extracted time: ${hour24}:${minute.toString().padStart(2, '0')}`);
+      
+      // Remove the time from text to avoid duplication
+      cleanedText = cleanedText.replace(timeMatch[0], '').trim();
+      console.log(`🔍 TaskProcessor: After removing time: "${cleanedText}"`);
     }
     
     // Enhanced date parsing with natural language
     extractedDate = this.parseNaturalDate(cleanedText);
+    if (extractedDate) {
+      console.log(`🔍 TaskProcessor: Extracted date: ${extractedDate.toLocaleString()}`);
+    }
     
     // Clean up the task text
     cleanedText = cleanedText
@@ -72,7 +83,9 @@ const taskProcessor = {
     // Remove trailing punctuation
     cleanedText = cleanedText.replace(/[.!?]+$/, '');
     
-    return {
+    console.log(`🔍 TaskProcessor: Final cleaned text: "${cleanedText}"`);
+    
+    const result = {
       cleanText: cleanedText,
       deadline: extractedDate && extractedTime ? {
         date: extractedDate,
@@ -90,6 +103,9 @@ const taskProcessor = {
         fullDate: extractedDate
       } : null
     };
+    
+    console.log(`🔍 TaskProcessor: Final result:`, JSON.stringify(result, null, 2));
+    return result;
   },
   
   // Parse natural language dates
