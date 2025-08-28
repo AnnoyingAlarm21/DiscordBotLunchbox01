@@ -303,6 +303,49 @@ client.on('messageCreate', async message => {
       return;
     } else {
       console.log(`❓ User response unclear: "${response}" - not yes/no`);
+      
+      // Check if user is adding deadline information to the existing task
+      const deadlineInfo = taskProcessor.cleanTaskText(message.content);
+      if (deadlineInfo.deadline !== null) {
+        console.log(`⏰ User provided deadline info: "${deadlineInfo.cleanText}"`);
+        
+        // Update the pending task with deadline information
+        const updatedTask = {
+          ...pendingTaskData,
+          deadline: deadlineInfo.deadline
+        };
+        
+        // Ask for confirmation with the updated task
+        let confirmationText = `🍱 Perfect! I'll add **"${pendingTaskData.cleanText}"** with deadline **${deadlineInfo.deadline.fullDate.toLocaleString()}** to your lunchbox.`;
+        confirmationText += `\n\n⏰ **Deadline:** ${deadlineInfo.deadline.fullDate.toLocaleString()}`;
+        confirmationText += `\n🔔 **Reminders:** 10 min • 5 min • Exact time`;
+        confirmationText += `\n\n**Just say "yes" to confirm!**`;
+        
+        await message.reply(confirmationText);
+        
+        // Update the pending task with deadline
+        client.pendingTasks.set(message.author.id, updatedTask);
+        return;
+      }
+      
+      // Check if user is providing additional context (not a new task)
+      const contextWords = ['but', 'however', 'also', 'additionally', 'plus', 'and', 'or', 'for', 'at', 'on', 'in', 'due', 'when', 'where', 'how'];
+      const hasContextWords = contextWords.some(word => messageContent.includes(word));
+      
+      if (hasContextWords) {
+        console.log(`🔍 User providing additional context, not a new task`);
+        
+        // Ask user to clarify if they want to add this as a separate task or modify the existing one
+        await message.reply(`🍱 I see you're adding more information. Do you want me to:\n\n1️⃣ **Modify the existing task** "${pendingTaskData.cleanText}" with this additional info?\n2️⃣ **Create a separate new task** with "${message.content}"?\n\nJust say "modify" or "new task" to let me know!`);
+        
+        // Store the context for the next response
+        client.pendingTasks.set(message.author.id, {
+          ...pendingTaskData,
+          additionalContext: message.content
+        });
+        return;
+      }
+      
       // Don't return here - let it continue to AI conversation
     }
   }
@@ -321,8 +364,12 @@ client.on('messageCreate', async message => {
   
   const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
   
-  // Only suggest tasks if it's clearly task-related AND not just casual conversation
-  if (hasTaskKeywords && isClearlyTaskRelated(messageContent)) {
+  // Check if this is likely additional context rather than a new task
+  const contextIndicators = ['but', 'however', 'also', 'additionally', 'plus', 'for', 'at', 'on', 'in', 'when', 'where', 'how', 'because', 'since', 'while'];
+  const isLikelyContext = contextIndicators.some(indicator => messageContent.includes(indicator));
+  
+  // Only suggest tasks if it's clearly task-related AND not just additional context
+  if (hasTaskKeywords && isClearlyTaskRelated(messageContent) && !isLikelyContext) {
     console.log(`🎯 Task detected! Processing: "${message.content}"`);
     
     // Process the task text to clean it up
