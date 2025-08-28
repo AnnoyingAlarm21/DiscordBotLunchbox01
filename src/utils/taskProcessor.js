@@ -15,11 +15,8 @@ const taskProcessor = {
       'dr ': 'doctor ',
       'doc ': 'doctor ',
       'apt ': 'appointment ',
-      'mtg ': 'meeting ',
-      'hw ': 'homework ',
-      'hw.': 'homework',
-      'hw?': 'homework',
-      'hw!': 'homework'
+      'mtg ': 'meeting '
+      // Removed hw/homework replacements that were causing "have" → "homeworkave"
     };
     
     Object.entries(spellingFixes).forEach(([wrong, correct]) => {
