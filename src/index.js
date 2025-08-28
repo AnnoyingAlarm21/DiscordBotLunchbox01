@@ -231,10 +231,16 @@ client.on('messageCreate', async message => {
   
   // Check if this is a response to a pending task question
   if (client.pendingTasks && client.pendingTasks.has(message.author.id)) {
+    console.log(`✅ Found pending task for user ${message.author.username}`);
     const pendingTaskData = client.pendingTasks.get(message.author.id);
     const response = messageContent;
     
-    if (response.includes('yes') || response.includes('yeah') || response.includes('sure') || response.includes('ok') || response.includes('yep')) {
+    console.log(`🔍 User response: "${response}"`);
+    console.log(`🔍 Pending task data:`, JSON.stringify(pendingTaskData, null, 2));
+    
+    if (response.includes('yes') || response.includes('yeah') || response.includes('sure') || response.includes('ok') || response.includes('yep') || response.includes('please')) {
+      console.log(`✅ User confirmed task creation`);
+      
       // Check if user added deadline information in their confirmation
       const deadlineUpdate = taskProcessor.cleanTaskText(message.content);
       const hasDeadlineUpdate = deadlineUpdate.deadline !== null;
@@ -253,6 +259,8 @@ client.on('messageCreate', async message => {
         // No deadline update - use original task
         await message.reply(`🍱 Great! Adding **"${finalTaskText}"** to your lunchbox...`);
       }
+      
+      console.log(`🚀 Creating task: "${finalTaskText}"`);
       
       // Use the addTask command logic
       const addTaskCommand = client.commands.get('addtask');
@@ -274,19 +282,28 @@ client.on('messageCreate', async message => {
             replied: false
           };
           
+          console.log(`🤖 Executing addTask command with mock interaction`);
           await addTaskCommand.execute(mockInteraction, client);
+          console.log(`✅ Task successfully created!`);
           client.pendingTasks.delete(message.author.id); // Clear the pending task
         } catch (error) {
-          console.error('Error adding task from conversation:', error);
+          console.error('❌ Error adding task from conversation:', error);
           await message.reply('🍱 Sorry, I had trouble adding that task. Try using `/addtask` instead!');
         }
+      } else {
+        console.error('❌ addTask command not found!');
+        await message.reply('🍱 Sorry, I had trouble adding that task. Try using `/addtask` instead!');
       }
       return;
     } else if (response.includes('no') || response.includes('nope') || response.includes('nah')) {
       // User doesn't want to add the task
+      console.log(`❌ User declined task creation`);
       await message.reply('🍱 No problem! Just let me know if you change your mind.');
       client.pendingTasks.delete(message.author.id); // Clear the pending task
       return;
+    } else {
+      console.log(`❓ User response unclear: "${response}" - not yes/no`);
+      // Don't return here - let it continue to AI conversation
     }
   }
   
@@ -306,10 +323,18 @@ client.on('messageCreate', async message => {
   
   // Only suggest tasks if it's clearly task-related AND not just casual conversation
   if (hasTaskKeywords && isClearlyTaskRelated(messageContent)) {
+    console.log(`🎯 Task detected! Processing: "${message.content}"`);
+    
     // Process the task text to clean it up
     const processedTask = taskProcessor.cleanTaskText(message.content);
     const cleanTaskText = processedTask.cleanText;
     const hasDeadline = processedTask.deadline !== null;
+    
+    console.log(`🧹 Cleaned task text: "${cleanTaskText}"`);
+    console.log(`⏰ Has deadline: ${hasDeadline}`);
+    if (hasDeadline) {
+      console.log(`📅 Deadline: ${processedTask.deadline.fullDate.toLocaleString()}`);
+    }
     
     // Create a better task suggestion - use the CLEANED text, not raw message
     let suggestionText = `🍱 That sounds like something for your lunchbox! Would you like me to add **"${cleanTaskText}"** as a task?`;
@@ -320,6 +345,7 @@ client.on('messageCreate', async message => {
       suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
     }
     
+    console.log(`💬 Sending task suggestion: "${suggestionText}"`);
     await message.reply(suggestionText);
     
     // Store the processed task for this user - store the CLEANED text
@@ -329,6 +355,8 @@ client.on('messageCreate', async message => {
       cleanText: cleanTaskText,  // This is the cleaned version
       deadline: processedTask.deadline
     });
+    
+    console.log(`💾 Stored pending task for user ${message.author.username}:`, JSON.stringify(client.pendingTasks.get(message.author.id), null, 2));
     
     // Also store in conversation context for AI to remember
     if (!client.conversationContext.has(message.author.id)) {
@@ -341,6 +369,8 @@ client.on('messageCreate', async message => {
     }
     const userContext = client.conversationContext.get(message.author.id);
     userContext.lastTaskContext = cleanTaskText;
+    
+    console.log(`🧠 Updated conversation context for user ${message.author.username}`);
     
   } else {
     // Regular conversation - use Groq AI for intelligent responses
