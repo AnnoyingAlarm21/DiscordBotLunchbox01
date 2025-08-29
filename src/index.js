@@ -215,7 +215,78 @@ client.on('messageCreate', async message => {
   
   // Check if user is in conversation mode
   if (!client.activeConversations.has(message.author.id)) {
-    // User is not in conversation mode - don't respond to regular messages
+    // User is not in conversation mode - check if they're trying to create a task
+    const messageContent = message.content.toLowerCase().trim();
+    
+    // Check if the message contains task-related keywords
+    const taskKeywords = [
+      'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
+      'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
+      'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
+      'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice',
+      'schedule', 'due', 'get done', 'finish', 'complete', 'submit', 'turn in',
+      'remind', 'set reminder', 'calendar', 'plan', 'organize', 'arrange',
+      'doctor', 'dentist', 'medical', 'checkup', 'exam', 'test', 'procedure',
+      'therapy', 'consultation', 'follow-up', 'surgery', 'treatment'
+    ];
+    
+    const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
+    
+    if (hasTaskKeywords && isClearlyTaskRelated(messageContent)) {
+      console.log(`🎯 Task detected from non-conversation user: "${message.content}"`);
+      
+      // Process the task text to clean it up
+      const processedTask = taskProcessor.cleanTaskText(message.content);
+      const cleanTaskText = processedTask.cleanText;
+      const hasDeadline = processedTask.deadline !== null;
+      
+      console.log(`🧹 Cleaned task text: "${cleanTaskText}"`);
+      console.log(`⏰ Has deadline: ${hasDeadline}`);
+      if (hasDeadline) {
+        console.log(`📅 Deadline: ${processedTask.deadline.fullDate.toLocaleString()}`);
+      }
+      
+      // Create a better task suggestion - use the CLEANED text, not raw message
+      let suggestionText = `🍱 That sounds like something for your lunchbox! Would you like me to add **"${cleanTaskText}"** as a task?`;
+      
+      if (hasDeadline) {
+        const deadline = processedTask.deadline;
+        suggestionText += `\n\n⏰ **Deadline detected:** ${deadline.fullDate.toLocaleString()}`;
+        suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
+      }
+      
+      suggestionText += `\n\n💬 **To start chatting naturally with me, use `/conversate`**`;
+      
+      console.log(`💬 Sending task suggestion: "${suggestionText}"`);
+      await message.reply(suggestionText);
+      
+      // Store the processed task for this user - store the CLEANED text
+      if (!client.pendingTasks) client.pendingTasks = new Map();
+      client.pendingTasks.set(message.author.id, {
+        originalText: message.content,
+        cleanText: cleanTaskText,  // This is the cleaned version
+        deadline: processedTask.deadline
+      });
+      
+      console.log(`💾 Stored pending task for user ${message.author.username}:`, JSON.stringify(client.pendingTasks.get(message.author.id), null, 2));
+      
+      // Also store in conversation context for AI to remember
+      if (!client.conversationContext.has(message.author.id)) {
+        client.conversationContext.set(message.author.id, {
+          messages: [],
+          lastTaskContext: null,
+          userPreferences: {},
+          conversationStart: new Date()
+        });
+      }
+      const userContext = client.conversationContext.get(message.author.id);
+      userContext.lastTaskContext = cleanTaskText;
+      
+      console.log(`🧠 Updated conversation context for user ${message.author.username}`);
+      return;
+    }
+    
+    // User is not in conversation mode and not creating a task - don't respond
     console.log(`🔇 User ${message.author.username} is not in conversation mode - ignoring message`);
     return;
   }
@@ -378,62 +449,9 @@ client.on('messageCreate', async message => {
     return;
   }
   
-  // Only suggest tasks if it's clearly task-related AND not just additional context
-  if (hasTaskKeywords && isClearlyTaskRelated(messageContent) && !isLikelyContext) {
-    console.log(`🎯 Task detected! Processing: "${message.content}"`);
-    
-    // Process the task text to clean it up
-    const processedTask = taskProcessor.cleanTaskText(message.content);
-    const cleanTaskText = processedTask.cleanText;
-    const hasDeadline = processedTask.deadline !== null;
-    
-    console.log(`🧹 Cleaned task text: "${cleanTaskText}"`);
-    console.log(`⏰ Has deadline: ${hasDeadline}`);
-    if (hasDeadline) {
-      console.log(`📅 Deadline: ${processedTask.deadline.fullDate.toLocaleString()}`);
-    }
-    
-    // Create a better task suggestion - use the CLEANED text, not raw message
-    let suggestionText = `🍱 That sounds like something for your lunchbox! Would you like me to add **"${cleanTaskText}"** as a task?`;
-    
-    if (hasDeadline) {
-      const deadline = processedTask.deadline;
-      suggestionText += `\n\n⏰ **Deadline detected:** ${deadline.fullDate.toLocaleString()}`;
-      suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
-    }
-    
-    console.log(`💬 Sending task suggestion: "${suggestionText}"`);
-    await message.reply(suggestionText);
-    
-    // Store the processed task for this user - store the CLEANED text
-    if (!client.pendingTasks) client.pendingTasks = new Map();
-    client.pendingTasks.set(message.author.id, {
-      originalText: message.content,
-      cleanText: cleanTaskText,  // This is the cleaned version
-      deadline: processedTask.deadline
-    });
-    
-    console.log(`💾 Stored pending task for user ${message.author.username}:`, JSON.stringify(client.pendingTasks.get(message.author.id), null, 2));
-    
-    // Also store in conversation context for AI to remember
-    if (!client.conversationContext.has(message.author.id)) {
-      client.conversationContext.set(message.author.id, {
-        messages: [],
-        lastTaskContext: null,
-        userPreferences: {},
-        conversationStart: new Date()
-      });
-    }
-    const userContext = client.conversationContext.get(message.author.id);
-    userContext.lastTaskContext = cleanTaskText;
-    
-    console.log(`🧠 Updated conversation context for user ${message.author.username}`);
-    
-  } else {
-    // Regular conversation - use Groq AI for intelligent responses
-    console.log(`💬 Going to AI conversation handler for: "${messageContent}"`);
-    await handleAIConversation(message, messageContent, client);
-  }
+  // For users in conversation mode, use AI conversation handler
+  console.log(`💬 Going to AI conversation handler for: "${messageContent}"`);
+  await handleAIConversation(message, messageContent, client);
 });
 
 // Login to Discord
