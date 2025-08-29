@@ -675,7 +675,7 @@ async function handleAIConversation(message, messageContent, client) {
     });
     
     // Keep only last 10 messages to avoid token limits
-    if (userContext.messages.length > 10) {
+    if (userContext.messages && userContext.messages.length > 10) {
       userContext.messages = userContext.messages.slice(-10);
     }
     
@@ -690,7 +690,7 @@ IMPORTANT:
 - Be helpful but honest about what you can and cannot do`;
 
     // Build conversation history for context
-    const conversationHistory = userContext.messages.slice(-5).map(msg => ({
+    const conversationHistory = (userContext.messages || []).slice(-5).map(msg => ({
       role: msg.role,
       content: msg.content
     }));
