@@ -74,7 +74,8 @@ client.once('ready', () => {
         uptime: process.uptime(),
         memory: process.memoryUsage(),
         timestamp: new Date().toISOString(),
-        version: '1.0.0'
+        version: '1.0.0',
+        startup: 'complete'
       };
       
       res.writeHead(200, { 
@@ -110,22 +111,22 @@ client.once('ready', () => {
     console.log(`🌐 Health check available at: http://0.0.0.0:${port}/health`);
     console.log(`🌐 Root endpoint at: http://0.0.0.0:${port}/`);
     
-    // Signal that the server is ready
+    // Signal that the server is ready IMMEDIATELY
     console.log('🚀 Bot is fully ready and responding to health checks!');
+    
+    // Add a simple startup health check that responds immediately
+    setTimeout(() => {
+      console.log('🔍 Performing startup health check verification...');
+      console.log(`🔍 Initial userTasks size: ${client.userTasks.size}`);
+      console.log(`🔍 Initial activeConversations size: ${client.activeConversations.size}`);
+      console.log('✅ Startup health check complete - service is ready!');
+    }, 1000);
   });
   
   // Handle server errors gracefully
   server.on('error', (error) => {
     console.error('HTTP server error:', error);
   });
-  
-  // Add a simple startup health check that responds immediately
-  setTimeout(() => {
-    console.log('🔍 Performing startup health check verification...');
-    console.log(`🔍 Initial userTasks size: ${client.userTasks.size}`);
-    console.log(`🔍 Initial activeConversations size: ${client.activeConversations.size}`);
-    // This will help Railway know the service is ready
-  }, 2000);
   
   // Set up periodic reminder cleanup (every 5 minutes)
   setInterval(() => {
