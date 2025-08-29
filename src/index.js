@@ -665,8 +665,28 @@ async function handleRegularConversation(message, messageContent) {
 async function handleAIConversation(message, messageContent, client) {
   console.log(`🤖 AI conversation handler called with: "${messageContent}"`);
   
+  // CRITICAL: Check if this message is task-related and redirect to task processing
+  const taskKeywords = [
+    'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
+    'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
+    'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
+    'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice',
+    'schedule', 'due', 'get done', 'finish', 'complete', 'submit', 'turn in',
+    'remind', 'set reminder', 'calendar', 'plan', 'organize', 'arrange',
+    'doctor', 'dentist', 'medical', 'checkup', 'exam', 'test', 'procedure',
+    'therapy', 'consultation', 'follow-up', 'surgery', 'treatment'
+  ];
+  
+  const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
+  
+  if (hasTaskKeywords) {
+    console.log(`🚫 AI conversation handler detected task keywords, redirecting to task processing`);
+    // Don't process this in AI conversation - let the main message handler deal with it
+    return;
+  }
+  
   try {
-    // Use Groq for intelligent conversation
+    // Use Groq for intelligent conversation (ONLY for non-task topics)
     const Groq = require('groq-sdk');
     const groq = new Groq({
       apiKey: process.env.GROQ_API_KEY,
@@ -697,15 +717,17 @@ async function handleAIConversation(message, messageContent, client) {
       userContext.messages = userContext.messages.slice(-10);
     }
     
-    // Create context-aware prompt that doesn't fake task creation
+    // Create context-aware prompt that completely avoids task topics
     let systemPrompt = `You are Lunchbox, a friendly and helpful AI productivity assistant. You help organize tasks into fun food categories (🍪 Sweets, 🥦 Vegetables, 🥪 Savory, 🧃 Sides) but you're also great at general conversation.
 
-IMPORTANT: 
-- Do NOT claim to have created or added tasks unless you actually did
-- Do NOT make up task names or details
-- If someone mentions a task, suggest they use the bot's task features
+CRITICAL RULES:
+- NEVER mention tasks, appointments, deadlines, or productivity features
+- NEVER claim to have created, added, or saved anything
+- NEVER offer to help with task management
+- ONLY chat about general topics, hobbies, interests, or casual conversation
+- If someone mentions work, tasks, or productivity, redirect them to use the bot's commands
 - Keep responses conversational and under 200 words
-- Be helpful but honest about what you can and cannot do`;
+- Be helpful but stay away from productivity topics completely`;
 
     // Build conversation history for context
     const conversationHistory = (userContext.messages || []).slice(-5).map(msg => ({
@@ -719,7 +741,7 @@ IMPORTANT:
       ...conversationHistory
     ];
     
-    console.log(`🤖 Sending to Groq with ${messages.length} messages for context`);
+    console.log(`🤖 Sending to Groq with ${messages.length} messages for context (non-task conversation)`);
     
     const completion = await groq.chat.completions.create({
       messages: messages,
@@ -728,7 +750,7 @@ IMPORTANT:
       max_tokens: 300,
     });
 
-    const aiResponse = completion.choices[0]?.message?.content || "🍱 That's interesting! I'm here to help with productivity and chat about anything. What's on your mind?";
+    const aiResponse = completion.choices[0]?.message?.content || "🍱 That's interesting! I'm here to chat about anything non-productivity related. What's on your mind?";
     
     // Add AI response to context
     userContext.messages.push({
