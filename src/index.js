@@ -368,6 +368,16 @@ client.on('messageCreate', async message => {
   const contextIndicators = ['but', 'however', 'also', 'additionally', 'plus', 'for', 'at', 'on', 'in', 'when', 'where', 'how', 'because', 'since', 'while'];
   const isLikelyContext = contextIndicators.some(indicator => messageContent.includes(indicator));
   
+  // Check if user is in conversation mode and has pending tasks
+  const hasPendingTask = client.pendingTasks && client.pendingTasks.has(message.author.id);
+  
+  // Priority: Handle pending tasks first, then detect new tasks, then AI conversation
+  if (hasPendingTask) {
+    console.log(`🎯 User has pending task, processing response to existing task`);
+    // This will be handled by the pending task logic above
+    return;
+  }
+  
   // Only suggest tasks if it's clearly task-related AND not just additional context
   if (hasTaskKeywords && isClearlyTaskRelated(messageContent) && !isLikelyContext) {
     console.log(`🎯 Task detected! Processing: "${message.content}"`);
@@ -669,25 +679,15 @@ async function handleAIConversation(message, messageContent, client) {
       userContext.messages = userContext.messages.slice(-10);
     }
     
-    // Check if this is a response to a previous task suggestion
-    const isTaskResponse = userContext.lastTaskContext && 
-      (messageContent.toLowerCase().includes('yes') || 
-       messageContent.toLowerCase().includes('yeah') || 
-       messageContent.toLowerCase().includes('sure') || 
-       messageContent.toLowerCase().includes('ok') || 
-       messageContent.toLowerCase().includes('yep') ||
-       messageContent.toLowerCase().includes('please'));
-    
-    // Create context-aware prompt
+    // Create context-aware prompt that doesn't fake task creation
     let systemPrompt = `You are Lunchbox, a friendly and helpful AI productivity assistant. You help organize tasks into fun food categories (🍪 Sweets, 🥦 Vegetables, 🥪 Savory, 🧃 Sides) but you're also great at general conversation.
 
-IMPORTANT: Maintain conversation context and remember what the user said previously.`;
-
-    if (isTaskResponse && userContext.lastTaskContext) {
-      systemPrompt += `\n\nCONTEXT: The user just said "${messageContent}" in response to your suggestion about adding "${userContext.lastTaskContext}" to their lunchbox. They want you to add this task.`;
-    }
-    
-    systemPrompt += `\n\nRespond naturally and helpfully. If they're asking for information, provide it. If they want to chat, be engaging. If they mention something that could be a task, gently suggest adding it to their lunchbox. Keep responses conversational and under 200 words.`;
+IMPORTANT: 
+- Do NOT claim to have created or added tasks unless you actually did
+- Do NOT make up task names or details
+- If someone mentions a task, suggest they use the bot's task features
+- Keep responses conversational and under 200 words
+- Be helpful but honest about what you can and cannot do`;
 
     // Build conversation history for context
     const conversationHistory = userContext.messages.slice(-5).map(msg => ({
@@ -718,11 +718,6 @@ IMPORTANT: Maintain conversation context and remember what the user said previou
       content: aiResponse,
       timestamp: new Date()
     });
-    
-    // If this was a task response, clear the task context
-    if (isTaskResponse) {
-      userContext.lastTaskContext = null;
-    }
     
     await message.reply(aiResponse);
     
