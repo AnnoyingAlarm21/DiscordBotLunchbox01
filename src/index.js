@@ -356,6 +356,20 @@ client.on('messageCreate', async message => {
           console.log(`🤖 Executing addTask command with mock interaction`);
           await addTaskCommand.execute(mockInteraction, client);
           console.log(`✅ Task successfully created!`);
+          
+          // Schedule reminders if the task has a deadline
+          if (finalDeadline) {
+            console.log(`⏰ Scheduling reminders for task with deadline: ${finalDeadline.fullDate.toLocaleString()}`);
+            try {
+              // Generate a unique task ID for reminders
+              const taskId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+              global.reminderSystem.scheduleReminders(client, message.author.id, taskId, finalTaskText, finalDeadline.fullDate);
+              console.log(`✅ Reminders scheduled successfully for task: ${taskId}`);
+            } catch (reminderError) {
+              console.error(`❌ Failed to schedule reminders:`, reminderError);
+            }
+          }
+          
           client.pendingTasks.delete(message.author.id); // Clear the pending task
         } catch (error) {
           console.error('❌ Error adding task from conversation:', error);
