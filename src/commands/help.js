@@ -105,6 +105,11 @@ module.exports = {
           inline: false
         },
         {
+          name: '/testnotification',
+          value: 'Send a test DM notification to verify the reminder system is working',
+          inline: false
+        },
+        {
           name: '/help',
           value: 'Show this help message (you\'re here!)',
           inline: false
