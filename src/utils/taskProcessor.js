@@ -96,18 +96,27 @@ const taskProcessor = {
       const taskFillers = ['can', 'you', 'help', 'please', 'create', 'add', 'make', 'this', 'that', 'thing', 'task'];
       
       // IMPORTANT: Keep "i", "need", "to", "have", "want", "study", "homework", etc. - these are the actual task!
+      // But remove "to" if it's just a filler (like "to study" -> "study")
       
       return !basicFillers.includes(word.toLowerCase()) && 
              !taskFillers.includes(word.toLowerCase()) && 
              word.length > 0;
     });
     
-    console.log(`🔍 TaskProcessor: After word filtering: "${words.join(' ')}"`);
-    
-    // Clean up the task text
+    // NEW: Clean up common patterns to make tasks more readable
     cleanedText = words.join(' ')
       .replace(/\s+/g, ' ') // Remove extra spaces
       .trim();
+    
+    // Remove "to" if it's at the beginning and doesn't add meaning
+    if (cleanedText.toLowerCase().startsWith('to ')) {
+      cleanedText = cleanedText.substring(3);
+    }
+    
+    // Remove "i need to" -> just keep the action
+    cleanedText = cleanedText.replace(/^i need to /i, '');
+    cleanedText = cleanedText.replace(/^i have to /i, '');
+    cleanedText = cleanedText.replace(/^i want to /i, '');
     
     // Capitalize first letter of each word
     cleanedText = cleanedText.split(' ')
@@ -118,7 +127,7 @@ const taskProcessor = {
     cleanedText = cleanedText.replace(/[.!?]+$/, '');
     
     // NEW: If we extracted time, add it back to the task text for clarity
-    if (extractedTime && !cleanedText.toLowerCase().includes('at')) {
+    if (extractedTime) {
       const timeString = `${extractedTime.hour > 12 ? extractedTime.hour - 12 : extractedTime.hour}:${extractedTime.minute.toString().padStart(2, '0')}${extractedTime.hour >= 12 ? 'pm' : 'am'}`;
       cleanedText = `${cleanedText} at ${timeString}`;
     }
@@ -141,6 +150,17 @@ const taskProcessor = {
         date: extractedDate,
         time: null,
         fullDate: extractedDate
+      } : extractedTime ? {
+        // NEW: If only time is mentioned, use today's date
+        date: new Date(),
+        time: extractedTime,
+        fullDate: new Date(
+          new Date().getFullYear(),
+          new Date().getMonth(),
+          new Date().getDate(),
+          extractedTime.hour,
+          extractedTime.minute
+        )
       } : null
     };
     
