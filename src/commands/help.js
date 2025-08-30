@@ -110,6 +110,21 @@ module.exports = {
           inline: false
         },
         {
+          name: '/timer [minutes] [label]',
+          value: 'Set a countdown timer and get DM notifications every 5 seconds when it goes off',
+          inline: false
+        },
+        {
+          name: '/mytimers',
+          value: 'Show your currently active timers',
+          inline: false
+        },
+        {
+          name: '/canceltimer [timer_id]',
+          value: 'Cancel an active timer using its ID',
+          inline: false
+        },
+        {
           name: '/help',
           value: 'Show this help message (you\'re here!)',
           inline: false
