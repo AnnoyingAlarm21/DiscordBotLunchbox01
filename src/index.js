@@ -425,6 +425,19 @@ client.on('messageCreate', async message => {
   
   const isLikelyTask = taskIndicators.some(indicator => messageContent.toLowerCase().includes(indicator));
   
+  // DEBUG: Log what we found
+  console.log(`🔍 DEBUG: Message: "${messageContent}"`);
+  console.log(`🔍 DEBUG: Has task keywords: ${hasTaskKeywords}`);
+  console.log(`🔍 DEBUG: Is likely task: ${isLikelyTask}`);
+  if (hasTaskKeywords) {
+    const foundKeywords = taskKeywords.filter(keyword => messageContent.includes(keyword));
+    console.log(`🔍 DEBUG: Found keywords: ${foundKeywords.join(', ')}`);
+  }
+  if (isLikelyTask) {
+    const foundIndicators = taskIndicators.filter(indicator => messageContent.toLowerCase().includes(indicator));
+    console.log(`🔍 DEBUG: Found indicators: ${foundIndicators.join(', ')}`);
+  }
+  
   // If it looks like a task, suggest creating it (CORE LUNCHBOX FEATURE!)
   if (hasTaskKeywords && isLikelyTask) {
     console.log(`🎯 LUNCHBOX CORE: Detected potential task from conversation: "${messageContent}"`);
