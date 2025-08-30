@@ -375,28 +375,6 @@ client.on('messageCreate', async message => {
     }
   }
   
-  // Check if the message contains task-related keywords AND user intent
-  const taskKeywords = [
-    'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
-    'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
-    'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
-    'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice',
-    'schedule', 'due', 'get done', 'finish', 'complete', 'submit', 'turn in',
-    'remind', 'set reminder', 'calendar', 'plan', 'organize', 'arrange',
-    'doctor', 'dentist', 'medical', 'checkup', 'exam', 'test', 'procedure',
-    'therapy', 'consultation', 'follow-up', 'surgery', 'treatment',
-    // NEW: More task-related keywords for better detection
-    'deliverables', 'coordination', 'work timings', 'timeline', 'requirements',
-    'deadlines', 'milestones', 'goals', 'objectives', 'targets', 'priorities',
-    'tasks', 'assignments', 'responsibilities', 'duties', 'chores', 'errands'
-  ];
-  
-  const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
-  
-  // Check if this is likely additional context rather than a new task
-  const contextIndicators = ['but', 'however', 'also', 'additionally', 'plus', 'for', 'at', 'on', 'in', 'when', 'where', 'how', 'because', 'since', 'while'];
-  const isLikelyContext = contextIndicators.some(indicator => messageContent.includes(indicator));
-  
   // Check if user is in conversation mode and has pending tasks
   const hasPendingTask = client.pendingTasks && client.pendingTasks.has(message.author.id);
   
@@ -407,34 +385,54 @@ client.on('messageCreate', async message => {
     return;
   }
   
-  // NEW: Only suggest tasks if user EXPLICITLY asks for task creation
-  const explicitTaskRequests = [
-    'create a task',
-    'add this to my lunchbox',
-    'add this to lunchbox',
-    'make this a task',
-    'put this in my lunchbox',
-    'add task',
-    'create task',
-    'make task',
-    'add to lunchbox',
-    'put in lunchbox'
+  // For users in conversation mode, use AI conversation handler (PRIORITY)
+  console.log(`💬 Going to AI conversation handler for: "${messageContent}"`);
+  
+  // NEW: Use the smart task detection from conversation (CORE LUNCHBOX FEATURE!)
+  const taskKeywords = [
+    'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
+    'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
+    'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
+    'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice',
+    'schedule', 'due', 'get done', 'finish', 'complete', 'submit', 'turn in',
+    'remind', 'set reminder', 'calendar', 'plan', 'organize', 'arrange',
+    'doctor', 'dentist', 'medical', 'checkup', 'exam', 'test', 'procedure',
+    'therapy', 'consultation', 'follow-up', 'surgery', 'treatment',
+    'deliverables', 'coordination', 'work timings', 'timeline', 'requirements',
+    'deadlines', 'milestones', 'goals', 'objectives', 'targets', 'priorities',
+    'tasks', 'assignments', 'responsibilities', 'duties', 'chores', 'errands'
   ];
   
-  const isExplicitTaskRequest = explicitTaskRequests.some(phrase => 
-    messageContent.toLowerCase().includes(phrase)
-  );
+  const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
   
-  // Only suggest tasks if user explicitly requests it
-  if (hasTaskKeywords && isExplicitTaskRequest) {
-    console.log(`🎯 User explicitly requested task creation, suggesting task`);
+  // Check if this is likely a task (not just casual conversation)
+  const taskIndicators = [
+    'i need to', 'i have to', 'i should', 'i must', 'i want to', 'i plan to', 'i am going to',
+    'i need to do', 'i have to do', 'i should do', 'i must do', 'i want to do',
+    'i need to finish', 'i have to finish', 'i should finish',
+    'i need to complete', 'i have to complete', 'i should complete',
+    'i need to work on', 'i have to work on', 'i should work on',
+    'i need to study', 'i have to study', 'i should study',
+    'i need to clean', 'i have to clean', 'i should clean',
+    'i need to buy', 'i have to buy', 'i should buy',
+    'i need to call', 'i have to call', 'i should call',
+    'i need to email', 'i have to email', 'i should email',
+    'i need to schedule', 'i have to schedule', 'i should schedule',
+    'i need to organize', 'i have to organize', 'i should organize'
+  ];
+  
+  const isLikelyTask = taskIndicators.some(indicator => messageContent.toLowerCase().includes(indicator));
+  
+  // If it looks like a task, suggest creating it (CORE LUNCHBOX FEATURE!)
+  if (hasTaskKeywords && isLikelyTask) {
+    console.log(`🎯 LUNCHBOX CORE: Detected potential task from conversation: "${messageContent}"`);
+    
     // Process as task suggestion
     await processTaskFromConversation(message, messageContent, client);
     return;
   }
   
-  // For users in conversation mode, use AI conversation handler (PRIORITY)
-  console.log(`💬 Going to AI conversation handler for: "${messageContent}"`);
+  // If not a task, use AI conversation
   await handleAIConversation(message, messageContent, client);
 });
 
