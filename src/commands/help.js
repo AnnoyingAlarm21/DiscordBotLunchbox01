@@ -91,7 +91,7 @@ module.exports = {
         },
         {
           name: '/conversate',
-          value: 'Start an AI conversation with Lunchbox - every message you type will be processed by AI',
+          value: 'Start an AI conversation with Lunchbox - every message you type will be processed by AI. Add a topic like "productivity" or "work" for focused discussions.',
           inline: false
         },
         {
