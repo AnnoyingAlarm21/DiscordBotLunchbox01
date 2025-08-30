@@ -59,11 +59,15 @@ const taskProcessor = {
       'can you create a task',
       'can you add this',
       'can you add that',
+      'can you help me',
+      'do you help me',
       'please create a task',
       'please add this',
       'please add that',
+      'please help me',
       'i want you to create',
       'i want you to add',
+      'i want you to help',
       'make this a task',
       'add this to my lunchbox',
       'add this to lunchbox',
@@ -85,7 +89,7 @@ const taskProcessor = {
       // NEW: Don't remove "to" and "have" as they're often important for task meaning
       
       // NEW: Remove common task creation phrases that don't add meaning
-      const taskFillers = ['i', 'have', 'need', 'want', 'got', 'got to', 'gotta'];
+      const taskFillers = ['i', 'have', 'need', 'want', 'got', 'got to', 'gotta', 'do', 'my', 'me', 'can', 'you', 'help', 'please', 'create', 'add', 'make', 'this', 'that', 'thing', 'task'];
       
       return !basicFillers.includes(word.toLowerCase()) && 
              !taskFillers.includes(word.toLowerCase()) && 
