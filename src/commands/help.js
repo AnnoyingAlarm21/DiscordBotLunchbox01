@@ -95,6 +95,11 @@ module.exports = {
           inline: false
         },
         {
+          name: '/joinconversation',
+          value: 'Join another user\'s conversation with Lunchbox AI - perfect for group discussions and collaboration!',
+          inline: false
+        },
+        {
           name: '/endconversation',
           value: 'End your AI conversation with Lunchbox',
           inline: false
