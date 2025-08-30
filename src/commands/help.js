@@ -128,6 +128,11 @@ module.exports = {
           name: '/help',
           value: 'Show this help message (you\'re here!)',
           inline: false
+        },
+        {
+          name: '/thread',
+          value: 'Create a private AI conversation thread',
+          inline: false
         }
       )
       .addFields(
