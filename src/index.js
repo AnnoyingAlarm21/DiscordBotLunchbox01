@@ -495,6 +495,24 @@ process.on('SIGINT', () => {
 
 // Helper function to determine if a message is clearly task-related
 function isClearlyTaskRelated(messageContent) {
+  // Simple task keywords that indicate a task
+  const simpleTaskKeywords = [
+    'need', 'want', 'have to', 'should', 'must', 'plan', 'going to',
+    'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
+    'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
+    'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice',
+    'schedule', 'due', 'finish', 'complete', 'submit', 'turn in',
+    'remind', 'reminder', 'calendar', 'arrange', 'life support', 'water'
+  ];
+  
+  // Check for simple task keywords
+  const hasSimpleTaskKeyword = simpleTaskKeywords.some(keyword => 
+    messageContent.includes(keyword)
+  );
+  
+  // If it has a simple task keyword, it's probably a task
+  if (hasSimpleTaskKeyword) return true;
+  
   // Phrases that are clearly about tasks
   const clearTaskPhrases = [
     'i need to', 'i have to', 'i should', 'i must', 'i want to', 'i plan to', 'i am going to',
@@ -696,7 +714,8 @@ async function handleAIConversation(message, messageContent, client) {
   
   if (hasTaskKeywords) {
     console.log(`🚫 AI conversation handler detected task keywords, redirecting to task processing`);
-    // Don't process this in AI conversation - let the main message handler deal with it
+    // Process this as a task instead of ignoring it
+    await processTaskFromConversation(message, messageContent, client);
     return;
   }
   
@@ -780,5 +799,65 @@ CRITICAL RULES:
     console.error('Error with AI conversation:', error);
     // Fallback to regular conversation if AI fails
     await handleRegularConversation(message, messageContent);
+  }
+}
+
+// NEW: Process tasks that were redirected from AI conversation handler
+async function processTaskFromConversation(message, messageContent, client) {
+  console.log(`🎯 Processing redirected task: "${messageContent}"`);
+  
+  try {
+    // Process the task text to clean it up
+    const processedTask = taskProcessor.cleanTaskText(messageContent);
+    const cleanTaskText = processedTask.cleanText;
+    const hasDeadline = processedTask.deadline !== null;
+    
+    console.log(`🧹 Cleaned task text: "${cleanTaskText}"`);
+    console.log(`⏰ Has deadline: ${hasDeadline}`);
+    if (hasDeadline) {
+      console.log(`📅 Deadline: ${processedTask.deadline.fullDate.toLocaleString()}`);
+    }
+    
+    // Create a better task suggestion - use the CLEANED text, not raw message
+    let suggestionText = `🍱 That sounds like something for your lunchbox! Would you like me to add **"${cleanTaskText}"** as a task?`;
+    
+    if (hasDeadline) {
+      const deadline = processedTask.deadline;
+      suggestionText += `\n\n⏰ **Deadline detected:** ${deadline.fullDate.toLocaleString()}`;
+      suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
+    }
+    
+    suggestionText += `\n\n💬 **To start chatting naturally with me, use `/conversate`**`;
+    
+    console.log(`💬 Sending task suggestion: "${suggestionText}"`);
+    await message.reply(suggestionText);
+    
+    // Store the processed task for this user - store the CLEANED text
+    if (!client.pendingTasks) client.pendingTasks = new Map();
+    client.pendingTasks.set(message.author.id, {
+      originalText: messageContent,
+      cleanText: cleanTaskText,  // This is the cleaned version
+      deadline: processedTask.deadline
+    });
+    
+    console.log(`💾 Stored pending task for user ${message.author.username}:`, JSON.stringify(client.pendingTasks.get(message.author.id), null, 2));
+    
+    // Also store in conversation context for AI to remember
+    if (!client.conversationContext.has(message.author.id)) {
+      client.conversationContext.set(message.author.id, {
+        messages: [],
+        lastTaskContext: null,
+        userPreferences: {},
+        conversationStart: new Date()
+      });
+    }
+    const userContext = client.conversationContext.get(message.author.id);
+    userContext.lastTaskContext = cleanTaskText;
+    
+    console.log(`🧠 Updated conversation context for user ${message.author.username}`);
+    
+  } catch (error) {
+    console.error('❌ Error processing redirected task:', error);
+    await message.reply('🍱 Sorry, I had trouble processing that task. Try using the `/addtask` command instead!');
   }
 }
