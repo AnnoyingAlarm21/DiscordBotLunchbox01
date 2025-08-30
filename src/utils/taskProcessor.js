@@ -12,6 +12,7 @@ const taskProcessor = {
       'seesion': 'session',
       'appoint ment': 'appointment',
       'tomoroor': 'tomorrow',
+      'morrow': 'tomorrow',  // NEW: Fix "morrow" → "tomorrow"
       'dr ': 'doctor ',
       'doc ': 'doctor ',
       'apt ': 'appointment ',
@@ -80,8 +81,15 @@ const taskProcessor = {
     // Split into words and filter out only the most basic fillers
     const words = cleanedText.split(/\s+/).filter(word => {
       // Keep all meaningful words, only remove very basic fillers
-      const basicFillers = ['and', 'or', 'but', 'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'];
-      return !basicFillers.includes(word.toLowerCase()) && word.length > 0;
+      const basicFillers = ['and', 'or', 'but', 'the', 'a', 'an', 'in', 'on', 'at', 'for', 'of', 'with', 'by'];
+      // NEW: Don't remove "to" and "have" as they're often important for task meaning
+      
+      // NEW: Remove common task creation phrases that don't add meaning
+      const taskFillers = ['i', 'have', 'need', 'want', 'got', 'got to', 'gotta'];
+      
+      return !basicFillers.includes(word.toLowerCase()) && 
+             !taskFillers.includes(word.toLowerCase()) && 
+             word.length > 0;
     });
     
     console.log(`🔍 TaskProcessor: After word filtering: "${words.join(' ')}"`);
