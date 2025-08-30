@@ -26,14 +26,19 @@ const taskProcessor = {
     console.log(`🔍 TaskProcessor: After spelling fixes: "${cleanedText}"`);
     
     // Extract time information BEFORE any text cleaning
-    const timeMatch = cleanedText.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)/i);
+    // NEW: Handle typos like "pkm" for "pm"
+    let timeMatch = cleanedText.match(/(\d{1,2}):?(\d{2})?\s*(am|pm|pkm|amk)/i);
     let extractedTime = null;
     let extractedDate = null;
     
     if (timeMatch) {
       const hour = parseInt(timeMatch[1]);
       const minute = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
-      const period = timeMatch[3].toLowerCase();
+      let period = timeMatch[3].toLowerCase();
+      
+      // Fix common typos
+      if (period === 'pkm') period = 'pm';
+      if (period === 'amk') period = 'am';
       
       // Convert to 24-hour format
       let hour24 = hour;
@@ -86,10 +91,11 @@ const taskProcessor = {
     const words = cleanedText.split(/\s+/).filter(word => {
       // Keep all meaningful words, only remove very basic fillers
       const basicFillers = ['and', 'or', 'but', 'the', 'a', 'an', 'in', 'on', 'at', 'for', 'of', 'with', 'by'];
-      // NEW: Don't remove "to" and "have" as they're often important for task meaning
       
-      // NEW: Remove common task creation phrases that don't add meaning
-      const taskFillers = ['i', 'have', 'need', 'want', 'got', 'got to', 'gotta', 'do', 'my', 'me', 'can', 'you', 'help', 'please', 'create', 'add', 'make', 'this', 'that', 'thing', 'task'];
+      // NEW: Be much less aggressive - only remove obvious task creation words
+      const taskFillers = ['can', 'you', 'help', 'please', 'create', 'add', 'make', 'this', 'that', 'thing', 'task'];
+      
+      // IMPORTANT: Keep "i", "need", "to", "have", "want", "study", "homework", etc. - these are the actual task!
       
       return !basicFillers.includes(word.toLowerCase()) && 
              !taskFillers.includes(word.toLowerCase()) && 
@@ -110,6 +116,12 @@ const taskProcessor = {
     
     // Remove trailing punctuation
     cleanedText = cleanedText.replace(/[.!?]+$/, '');
+    
+    // NEW: If we extracted time, add it back to the task text for clarity
+    if (extractedTime && !cleanedText.toLowerCase().includes('at')) {
+      const timeString = `${extractedTime.hour > 12 ? extractedTime.hour - 12 : extractedTime.hour}:${extractedTime.minute.toString().padStart(2, '0')}${extractedTime.hour >= 12 ? 'pm' : 'am'}`;
+      cleanedText = `${cleanedText} at ${timeString}`;
+    }
     
     console.log(`🔍 TaskProcessor: Final cleaned text: "${cleanedText}"`);
     
