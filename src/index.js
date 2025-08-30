@@ -418,7 +418,9 @@ client.on('messageCreate', async message => {
     'i need to call', 'i have to call', 'i should call',
     'i need to email', 'i have to email', 'i should email',
     'i need to schedule', 'i have to schedule', 'i should schedule',
-    'i need to organize', 'i have to organize', 'i should organize'
+    'i need to organize', 'i have to organize', 'i should organize',
+    // NEW: Add "i have" for cases like "i have homework"
+    'i have', 'i got', 'i got to', 'gotta'
   ];
   
   const isLikelyTask = taskIndicators.some(indicator => messageContent.toLowerCase().includes(indicator));
