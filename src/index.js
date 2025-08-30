@@ -256,7 +256,7 @@ client.on('messageCreate', async message => {
         suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
       }
       
-      suggestionText += `\n\n💬 **To start chatting naturally with me, use `/conversate`**`;
+      suggestionText += `\n\n💬 **To start chatting naturally with me, use \`/conversate\`**`;
       
       console.log(`💬 Sending task suggestion: "${suggestionText}"`);
       await message.reply(suggestionText);
@@ -841,7 +841,7 @@ async function processTaskFromConversation(message, messageContent, client) {
       suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
     }
     
-    suggestionText += `\n\n💬 **To start chatting naturally with me, use `/conversate`**`;
+    suggestionText += `\n\n💬 **To start chatting naturally with me, use \`/conversate\`**`;
     
     console.log(`💬 Sending task suggestion: "${suggestionText}"`);
     await message.reply(suggestionText);
