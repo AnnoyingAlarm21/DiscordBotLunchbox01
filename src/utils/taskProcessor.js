@@ -53,6 +53,29 @@ const taskProcessor = {
       console.log(`🔍 TaskProcessor: Extracted date: ${extractedDate.toLocaleString()}`);
     }
     
+    // NEW: Remove question phrases and task creation requests
+    const questionPhrases = [
+      'can you create a task',
+      'can you add this',
+      'can you add that',
+      'please create a task',
+      'please add this',
+      'please add that',
+      'i want you to create',
+      'i want you to add',
+      'make this a task',
+      'add this to my lunchbox',
+      'add this to lunchbox',
+      'create a task for this',
+      'create a task for that'
+    ];
+    
+    questionPhrases.forEach(phrase => {
+      cleanedText = cleanedText.replace(new RegExp(phrase, 'gi'), '').trim();
+    });
+    
+    console.log(`🔍 TaskProcessor: After removing question phrases: "${cleanedText}"`);
+    
     // NOW do minimal text cleaning - only remove truly unnecessary words
     // Split into words and filter out only the most basic fillers
     const words = cleanedText.split(/\s+/).filter(word => {
