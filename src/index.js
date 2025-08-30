@@ -214,15 +214,20 @@ client.on('messageCreate', async message => {
     return;
   }
   
-  // Check if user is in conversation mode
-  if (!client.activeConversations.has(message.author.id)) {
-    // User is not in conversation mode - don't respond (no more aggressive task detection!)
-    console.log(`🔇 User ${message.author.username} is not in conversation mode - ignoring message`);
+  // Check if user is in conversation mode OR if this is a private thread
+  const isInPrivateThread = message.channel.isThread() && 
+                           message.channel.ownerId === message.author.id &&
+                           client.privateThreads?.has(message.channel.id);
+  
+  if (!client.activeConversations.has(message.author.id) && !isInPrivateThread) {
+    // User is not in conversation mode and not in a private thread - don't respond
+    console.log(`🔇 User ${message.author.username} is not in conversation mode or private thread - ignoring message`);
     return;
   }
   
-  // User is in conversation mode - process their message
-  console.log(`💬 Processing conversation message from ${message.author.username}: "${message.content}"`);
+  // User is in conversation mode OR in private thread - process their message
+  const context = isInPrivateThread ? 'private thread' : 'conversation mode';
+  console.log(`💬 Processing ${context} message from ${message.author.username}: "${message.content}"`);
   
   // Handle regular conversation - this is the key feature!
   const messageContent = message.content.toLowerCase().trim();
