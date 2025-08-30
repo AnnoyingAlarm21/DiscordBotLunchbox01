@@ -216,78 +216,7 @@ client.on('messageCreate', async message => {
   
   // Check if user is in conversation mode
   if (!client.activeConversations.has(message.author.id)) {
-    // User is not in conversation mode - check if they're trying to create a task
-    const messageContent = message.content.toLowerCase().trim();
-    
-    // Check if the message contains task-related keywords
-    const taskKeywords = [
-      'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
-      'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
-      'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
-      'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice',
-      'schedule', 'due', 'get done', 'finish', 'complete', 'submit', 'turn in',
-      'remind', 'set reminder', 'calendar', 'plan', 'organize', 'arrange',
-      'doctor', 'dentist', 'medical', 'checkup', 'exam', 'test', 'procedure',
-      'therapy', 'consultation', 'follow-up', 'surgery', 'treatment'
-    ];
-    
-    const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
-    
-    if (hasTaskKeywords && isClearlyTaskRelated(messageContent)) {
-      console.log(`🎯 Task detected from non-conversation user: "${message.content}"`);
-      
-      // Process the task text to clean it up
-      const processedTask = taskProcessor.cleanTaskText(message.content);
-      const cleanTaskText = processedTask.cleanText;
-      const hasDeadline = processedTask.deadline !== null;
-      
-      console.log(`🧹 Cleaned task text: "${cleanTaskText}"`);
-      console.log(`⏰ Has deadline: ${hasDeadline}`);
-      if (hasDeadline) {
-        console.log(`📅 Deadline: ${processedTask.deadline.fullDate.toLocaleString()}`);
-      }
-      
-      // Create a better task suggestion - use the CLEANED text, not raw message
-      let suggestionText = `🍱 That sounds like something for your lunchbox! Would you like me to add **"${cleanTaskText}"** as a task?`;
-      
-      if (hasDeadline) {
-        const deadline = processedTask.deadline;
-        suggestionText += `\n\n⏰ **Deadline detected:** ${deadline.fullDate.toLocaleString()}`;
-        suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
-      }
-      
-      suggestionText += `\n\n💬 **To start chatting naturally with me, use \`/conversate\`**`;
-      
-      console.log(`💬 Sending task suggestion: "${suggestionText}"`);
-      await message.reply(suggestionText);
-      
-      // Store the processed task for this user - store the CLEANED text
-      if (!client.pendingTasks) client.pendingTasks = new Map();
-      client.pendingTasks.set(message.author.id, {
-        originalText: message.content,
-        cleanText: cleanTaskText,  // This is the cleaned version
-        deadline: processedTask.deadline
-      });
-      
-      console.log(`💾 Stored pending task for user ${message.author.username}:`, JSON.stringify(client.pendingTasks.get(message.author.id), null, 2));
-      
-      // Also store in conversation context for AI to remember
-      if (!client.conversationContext.has(message.author.id)) {
-        client.conversationContext.set(message.author.id, {
-          messages: [],
-          lastTaskContext: null,
-          userPreferences: {},
-          conversationStart: new Date()
-        });
-      }
-      const userContext = client.conversationContext.get(message.author.id);
-      userContext.lastTaskContext = cleanTaskText;
-      
-      console.log(`🧠 Updated conversation context for user ${message.author.username}`);
-      return;
-    }
-    
-    // User is not in conversation mode and not creating a task - don't respond
+    // User is not in conversation mode - don't respond (no more aggressive task detection!)
     console.log(`🔇 User ${message.author.username} is not in conversation mode - ignoring message`);
     return;
   }
@@ -464,7 +393,33 @@ client.on('messageCreate', async message => {
     return;
   }
   
-  // For users in conversation mode, use AI conversation handler
+  // NEW: Only suggest tasks if user EXPLICITLY asks for task creation
+  const explicitTaskRequests = [
+    'create a task',
+    'add this to my lunchbox',
+    'add this to lunchbox',
+    'make this a task',
+    'put this in my lunchbox',
+    'add task',
+    'create task',
+    'make task',
+    'add to lunchbox',
+    'put in lunchbox'
+  ];
+  
+  const isExplicitTaskRequest = explicitTaskRequests.some(phrase => 
+    messageContent.toLowerCase().includes(phrase)
+  );
+  
+  // Only suggest tasks if user explicitly requests it
+  if (hasTaskKeywords && isExplicitTaskRequest) {
+    console.log(`🎯 User explicitly requested task creation, suggesting task`);
+    // Process as task suggestion
+    await processTaskFromConversation(message, messageContent, client);
+    return;
+  }
+  
+  // For users in conversation mode, use AI conversation handler (PRIORITY)
   console.log(`💬 Going to AI conversation handler for: "${messageContent}"`);
   await handleAIConversation(message, messageContent, client);
 });
@@ -492,87 +447,6 @@ process.on('SIGINT', () => {
   client.destroy();
   process.exit(0);
 });
-
-// Helper function to determine if a message is clearly task-related
-function isClearlyTaskRelated(messageContent) {
-  // Simple task keywords that indicate a task
-  const simpleTaskKeywords = [
-    'need', 'want', 'have to', 'should', 'must', 'plan', 'going to',
-    'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
-    'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
-    'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice',
-    'schedule', 'due', 'finish', 'complete', 'submit', 'turn in',
-    'remind', 'reminder', 'calendar', 'arrange', 'life support', 'water'
-  ];
-  
-  // Check for simple task keywords
-  const hasSimpleTaskKeyword = simpleTaskKeywords.some(keyword => 
-    messageContent.includes(keyword)
-  );
-  
-  // If it has a simple task keyword, it's probably a task
-  if (hasSimpleTaskKeyword) return true;
-  
-  // Phrases that are clearly about tasks
-  const clearTaskPhrases = [
-    'i need to', 'i have to', 'i should', 'i must', 'i want to', 'i plan to', 'i am going to',
-    'i need to do', 'i have to do', 'i should do', 'i must do', 'i want to do',
-    'i need to finish', 'i have to finish', 'i should finish',
-    'i need to complete', 'i have to complete', 'i should complete',
-    'i need to work on', 'i have to work on', 'i should work on',
-    'i need to study', 'i have to study', 'i should study',
-    'i need to clean', 'i have to clean', 'i should clean',
-    'i need to buy', 'i have to buy', 'i should buy',
-    'i need to call', 'i have to call', 'i should call',
-    'i need to email', 'i have to email', 'i should email',
-    'i need to schedule', 'i have to schedule', 'i should schedule',
-    'i need to organize', 'i have to organize', 'i should organize'
-  ];
-  
-  // Check for clear task phrases
-  const hasClearTaskPhrase = clearTaskPhrases.some(phrase => 
-    messageContent.includes(phrase)
-  );
-  
-  // If it has a clear task phrase, it's definitely a task
-  if (hasClearTaskPhrase) return true;
-  
-  // Check for casual conversation indicators that suggest it's NOT a task
-  const casualIndicators = [
-    'how are you', 'how\'s it going', 'what\'s up', 'sup', 'hey', 'hi', 'hello',
-    'good morning', 'good afternoon', 'good evening', 'good night',
-    'nice to meet you', 'pleasure to meet you', 'how do you do',
-    'what\'s your name', 'who are you', 'tell me about yourself',
-    'what can you do', 'how do you work', 'what are your features',
-    'i like', 'i love', 'i enjoy', 'i hate', 'i dislike',
-    'the weather is', 'it\'s raining', 'it\'s sunny', 'it\'s cold', 'it\'s hot',
-    'i\'m tired', 'i\'m happy', 'i\'m sad', 'i\'m excited', 'i\'m bored',
-    'that\'s cool', 'that\'s awesome', 'that\'s amazing', 'that\'s terrible',
-    'i agree', 'i disagree', 'you\'re right', 'you\'re wrong',
-    'thank you', 'thanks', 'appreciate it', 'no problem', 'you\'re welcome'
-  ];
-  
-  const hasCasualIndicators = casualIndicators.some(indicator => 
-    messageContent.includes(indicator)
-  );
-  
-  // If it has casual indicators, it's probably not a task
-  // BUT if it also has questions about the bot, we should still respond
-  if (hasCasualIndicators) {
-    // Check if it's asking about the bot specifically
-    const botQuestions = ['what is your name', 'who are you', 'tell me about yourself', 'what can you do', 'how do you work'];
-    const isAskingAboutBot = botQuestions.some(question => messageContent.includes(question));
-    
-    if (isAskingAboutBot) {
-      return false; // Let it go to conversation handling
-    }
-    
-    return false; // It's casual conversation, not a task
-  }
-  
-  // Default: if it has task keywords but no clear context, ask the user
-  return true;
-}
 
 // Handle regular conversation intelligently
 async function handleRegularConversation(message, messageContent) {
@@ -698,26 +572,8 @@ async function handleRegularConversation(message, messageContent) {
 async function handleAIConversation(message, messageContent, client) {
   console.log(`🤖 AI conversation handler called with: "${messageContent}"`);
   
-  // CRITICAL: Check if this message is task-related and redirect to task processing
-  const taskKeywords = [
-    'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
-    'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
-    'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
-    'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice',
-    'schedule', 'due', 'get done', 'finish', 'complete', 'submit', 'turn in',
-    'remind', 'set reminder', 'calendar', 'plan', 'organize', 'arrange',
-    'doctor', 'dentist', 'medical', 'checkup', 'exam', 'test', 'procedure',
-    'therapy', 'consultation', 'follow-up', 'surgery', 'treatment'
-  ];
-  
-  const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
-  
-  if (hasTaskKeywords) {
-    console.log(`🚫 AI conversation handler detected task keywords, redirecting to task processing`);
-    // Process this as a task instead of ignoring it
-    await processTaskFromConversation(message, messageContent, client);
-    return;
-  }
+  // REMOVED: Aggressive task detection - let users chat naturally!
+  // Only redirect to tasks if they explicitly ask for task creation
   
   try {
     // Use Groq for intelligent conversation (ONLY for non-task topics)
@@ -751,17 +607,19 @@ async function handleAIConversation(message, messageContent, client) {
       userContext.messages = userContext.messages.slice(-10);
     }
     
-    // Create context-aware prompt that completely avoids task topics
-    let systemPrompt = `You are Lunchbox, a friendly and helpful AI productivity assistant. You help organize tasks into fun food categories (🍪 Sweets, 🥦 Vegetables, 🥪 Savory, 🧃 Sides) but you're also great at general conversation.
+    // Create context-aware prompt that focuses on conversation, not tasks
+    let systemPrompt = `You are Lunchbox, a friendly and helpful AI companion. You're great at general conversation, helping with advice, and being a good chat buddy.
 
-CRITICAL RULES:
-- NEVER mention tasks, appointments, deadlines, or productivity features
-- NEVER claim to have created, added, or saved anything
-- NEVER offer to help with task management
-- ONLY chat about general topics, hobbies, interests, or casual conversation
-- If someone mentions work, tasks, or productivity, redirect them to use the bot's commands
+CONVERSATION FOCUS:
+- Be helpful, friendly, and engaging
+- Ask follow-up questions to keep conversation flowing
+- Share relevant advice or thoughts
+- Be supportive and encouraging
 - Keep responses conversational and under 200 words
-- Be helpful but stay away from productivity topics completely`;
+- If someone mentions they need help with something, offer to help them figure it out
+- Only mention task creation if they explicitly ask for it
+
+Remember: You're a conversation partner first, not a task manager!`;
 
     // Build conversation history for context
     const conversationHistory = (userContext.messages || []).slice(-5).map(msg => ({
