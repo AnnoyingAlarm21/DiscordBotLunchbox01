@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const taskProcessor = require('./utils/taskProcessor');
+const taskStorage = require('./utils/taskStorage');
 
 // Load environment variables from .env file
 config();
@@ -53,6 +54,10 @@ client.once('ready', () => {
   console.log(`🍱 Lunchbox is ready! Logged in as ${client.user.tag}`);
   client.user.setActivity('organizing your lunchbox! 🥪', { type: 'PLAYING' });
   
+  // Load tasks from persistent storage
+  client.userTasks = taskStorage.loadTasks();
+  console.log(`📁 Loaded ${client.userTasks.size} users with tasks from storage`);
+  
   // Log process information for debugging
   console.log(`📊 Process ID: ${process.pid}`);
   console.log(`📊 Node Version: ${process.version}`);
@@ -98,42 +103,42 @@ client.once('ready', () => {
       res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
     } else {
       console.log(`❌ Unknown endpoint: ${req.url}`);
-      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('Not Found');
     }
   });
   
-  const port = process.env.PORT || 3000;
-  console.log(`🌐 Starting HTTP server on port ${port}...`);
-  
-  server.listen(port, '0.0.0.0', () => {
-    console.log(`🌐 HTTP server successfully running on port ${port} for Railway health checks`);
-    console.log(`🌐 Health check available at: http://0.0.0.0:${port}/health`);
-    console.log(`🌐 Root endpoint at: http://0.0.0.0:${port}/`);
-    
-    // Signal that the server is ready IMMEDIATELY
-    console.log('🚀 Bot is fully ready and responding to health checks!');
-    
-    // Add a simple startup health check that responds immediately
-    setTimeout(() => {
-      console.log('🔍 Performing startup health check verification...');
-      console.log(`🔍 Initial userTasks size: ${client.userTasks.size}`);
-      console.log(`🔍 Initial activeConversations size: ${client.activeConversations.size}`);
-      console.log('✅ Startup health check complete - service is ready!');
-    }, 1000);
+  server.listen(8080, '0.0.0.0', () => {
+    console.log('🌐 Starting HTTP server on port 8080...');
+    console.log('🌐 HTTP server successfully running on port 8080 for Railway health checks');
+    console.log('🌐 Health check available at: http://0.0.0.0:8080/health');
+    console.log('🌐 Root endpoint at: http://0.0.0.0:8080/');
   });
   
-  // Handle server errors gracefully
-  server.on('error', (error) => {
-    console.error('HTTP server error:', error);
-  });
-  
-  // Set up periodic reminder cleanup (every 5 minutes)
+  // Periodic task saving every 5 minutes
   setInterval(() => {
-    if (global.reminderSystem) {
-      global.reminderSystem.cleanupExpiredReminders();
+    if (client.userTasks && client.userTasks.size > 0) {
+      console.log('💾 Periodic task save triggered');
+      saveTasksToStorage();
     }
-  }, 5 * 60 * 1000);
+  }, 5 * 60 * 1000); // 5 minutes
+  
+  // Periodic reminder cleanup every 5 minutes
+  if (global.reminderSystem) {
+    setInterval(() => {
+      global.reminderSystem.cleanupExpiredReminders();
+    }, 5 * 60 * 1000); // 5 minutes
+  }
+  
+  console.log('🚀 Bot is fully ready and responding to health checks!');
+  
+  // Add a simple startup health check that responds immediately
+  setTimeout(() => {
+    console.log('🔍 Performing startup health check verification...');
+    console.log(`🔍 Initial userTasks size: ${client.userTasks.size}`);
+    console.log(`🔍 Initial activeConversations size: ${client.activeConversations.size}`);
+    console.log('✅ Startup health check complete - service is ready!');
+  }, 1000);
 });
 
 // Handle slash command interactions
@@ -436,9 +441,20 @@ client.on('messageCreate', async message => {
 // Login to Discord
 client.login(process.env.DISCORD_TOKEN);
 
+// Helper function to save tasks to storage
+function saveTasksToStorage() {
+  try {
+    taskStorage.saveTasks(client.userTasks);
+  } catch (error) {
+    console.error('❌ Error saving tasks to storage:', error);
+  }
+}
+
 // Graceful shutdown handling for Railway
 process.on('SIGTERM', () => {
   console.log('🔄 Received SIGTERM, shutting down gracefully...');
+  // Save all tasks to storage
+  saveTasksToStorage();
   // Clean up all active reminders
   if (global.reminderSystem) {
     global.reminderSystem.cleanupExpiredReminders();
@@ -449,6 +465,8 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
   console.log('🔄 Received SIGINT, shutting down gracefully...');
+  // Save all tasks to storage
+  saveTasksToStorage();
   // Clean up all active reminders
   if (global.reminderSystem) {
     global.reminderSystem.cleanupExpiredReminders();
