@@ -374,7 +374,11 @@ client.on('messageCreate', async message => {
     'schedule', 'due', 'get done', 'finish', 'complete', 'submit', 'turn in',
     'remind', 'set reminder', 'calendar', 'plan', 'organize', 'arrange',
     'doctor', 'dentist', 'medical', 'checkup', 'exam', 'test', 'procedure',
-    'therapy', 'consultation', 'follow-up', 'surgery', 'treatment'
+    'therapy', 'consultation', 'follow-up', 'surgery', 'treatment',
+    // NEW: More task-related keywords for better detection
+    'deliverables', 'coordination', 'work timings', 'timeline', 'requirements',
+    'deadlines', 'milestones', 'goals', 'objectives', 'targets', 'priorities',
+    'tasks', 'assignments', 'responsibilities', 'duties', 'chores', 'errands'
   ];
   
   const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
@@ -612,14 +616,13 @@ async function handleAIConversation(message, messageContent, client) {
 
 CONVERSATION FOCUS:
 - Be helpful, friendly, and engaging
-- Ask follow-up questions to keep conversation flowing
-- Share relevant advice or thoughts
+- Keep responses SHORT and punchy (max 100 words)
+- Ask ONE follow-up question max
 - Be supportive and encouraging
-- Keep responses conversational and under 200 words
 - If someone mentions they need help with something, offer to help them figure it out
 - Only mention task creation if they explicitly ask for it
 
-Remember: You're a conversation partner first, not a task manager!`;
+REMEMBER: Teens have short attention spans - keep it brief and fun!`;
 
     // Build conversation history for context
     const conversationHistory = (userContext.messages || []).slice(-5).map(msg => ({
@@ -639,7 +642,7 @@ Remember: You're a conversation partner first, not a task manager!`;
       messages: messages,
       model: "llama3-8b-8192",
       temperature: 0.7,
-      max_tokens: 300,
+      max_tokens: 150,  // REDUCED: Shorter responses for teens
     });
 
     const aiResponse = completion.choices[0]?.message?.content || "🍱 That's interesting! I'm here to chat about anything non-productivity related. What's on your mind?";
