@@ -807,8 +807,22 @@ async function processTaskFromConversation(message, messageContent, client) {
   console.log(`🎯 Processing redirected task: "${messageContent}"`);
   
   try {
+    // Check if taskProcessor is available
+    if (!taskProcessor || typeof taskProcessor.cleanTaskText !== 'function') {
+      console.error('❌ taskProcessor not available or cleanTaskText is not a function');
+      await message.reply('🍱 Sorry, the task processor is not available. Please try using the `/addtask` command instead!');
+      return;
+    }
+    
     // Process the task text to clean it up
     const processedTask = taskProcessor.cleanTaskText(messageContent);
+    
+    if (!processedTask || !processedTask.cleanText) {
+      console.error('❌ Failed to process task text:', processedTask);
+      await message.reply('🍱 Sorry, I had trouble understanding that task. Please try being more specific or use the `/addtask` command!');
+      return;
+    }
+    
     const cleanTaskText = processedTask.cleanText;
     const hasDeadline = processedTask.deadline !== null;
     
@@ -858,6 +872,7 @@ async function processTaskFromConversation(message, messageContent, client) {
     
   } catch (error) {
     console.error('❌ Error processing redirected task:', error);
+    console.error('❌ Error stack:', error.stack);
     await message.reply('🍱 Sorry, I had trouble processing that task. Try using the `/addtask` command instead!');
   }
 }
