@@ -96,7 +96,7 @@ const taskProcessor = {
       const taskFillers = ['can', 'you', 'help', 'please', 'create', 'add', 'make', 'this', 'that', 'thing', 'task'];
       
       // NEW: Remove conversational fillers that don't add meaning to tasks
-      const conversationFillers = ['well', 'so', 'um', 'uh', 'like', 'you know', 'actually', 'basically'];
+      const conversationFillers = ['well', 'so', 'um', 'uh', 'like', 'you know', 'actually', 'basically', 'good', 'bad', 'okay', 'ok', 'yeah', 'yes', 'no', 'nope', 'nah'];
       
       // IMPORTANT: Keep "i", "need", "to", "have", "want", "study", "homework", etc. - these are the actual task!
       // But remove "to" if it's just a filler (like "to study" -> "study")
@@ -159,6 +159,29 @@ const taskProcessor = {
       if (match) {
         const item = match[1];
         console.log(`🔍 SmartTask: Matched "i have" pattern, item: "${item}"`);
+        if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
+          cleanedText = `Study for ${item}`;
+          console.log(`🔍 SmartTask: Generated "Study for ${item}"`);
+        } else if (item.toLowerCase().includes('homework')) {
+          cleanedText = `Complete ${item}`;
+          console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
+        } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment')) {
+          cleanedText = `Prepare for ${item}`;
+          console.log(`🔍 SmartTask: Generated "Prepare for ${item}"`);
+        } else {
+          cleanedText = `Complete ${item}`;
+          console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
+        }
+      }
+    }
+    
+    // NEW: Handle cases where "i have" appears after other words
+    const haveAnywherePattern = /i have (.+)$/i;
+    if (!cleanedText.startsWith('Study for') && !cleanedText.startsWith('Prepare for') && !cleanedText.startsWith('Work on') && !cleanedText.startsWith('Complete')) {
+      const match = cleanedText.match(/i have (.+)$/i);
+      if (match) {
+        const item = match[1];
+        console.log(`🔍 SmartTask: Matched "i have" anywhere pattern, item: "${item}"`);
         if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
           cleanedText = `Study for ${item}`;
           console.log(`🔍 SmartTask: Generated "Study for ${item}"`);
