@@ -154,60 +154,100 @@ const taskProcessor = {
     console.log(`🔍 TaskProcessor: After spelling fixes: "${cleanedText}"`);
     
     // NEW: Smart task name generation
-    // If it's "i have a [something]", make it "Study for [Something]" or "Prepare for [Something]"
-    const havePattern = /^i have a (.+)$/i;
-    const gotPattern = /^i got a (.+)$/i;
-    const needPattern = /^i need a (.+)$/i;
+    // Check for "i have" patterns and transform them into better task names
+    const havePattern = /^i have (.+)$/i;
+    const gotPattern = /^i got (.+)$/i;
+    const needPattern = /^i need (.+)$/i;
+    const haveSimplePattern = /^have (.+)$/i;
+    const haveAnywherePattern = /i have (.+)$/i;
     
     console.log(`🔍 SmartTask: Checking patterns for "${cleanedText}"`);
     
-    if (havePattern.test(cleanedText) || gotPattern.test(cleanedText) || needPattern.test(cleanedText)) {
-      const match = cleanedText.match(/(?:i have a|i got a|i need a) (.+)$/i);
-      if (match) {
-        const item = match[1];
-        console.log(`🔍 SmartTask: Matched "i have a" pattern, item: "${item}"`);
-        // Determine the appropriate action based on the item
-        if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
-          cleanedText = `Study for ${item}`;
-          console.log(`🔍 SmartTask: Generated "Study for ${item}"`);
-        } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment') || item.toLowerCase().includes('interview')) {
-          cleanedText = `Prepare for ${item}`;
-          console.log(`🔍 SmartTask: Generated "Prepare for ${item}"`);
-        } else if (item.toLowerCase().includes('project') || item.toLowerCase().includes('assignment') || item.toLowerCase().includes('paper')) {
-          cleanedText = `Work on ${item}`;
-          console.log(`🔍 SmartTask: Generated "Work on ${item}"`);
-        } else {
-          cleanedText = `Prepare for ${item}`;
-          console.log(`🔍 SmartTask: Generated "Prepare for ${item}"`);
-        }
+    // Handle "i have a X" patterns
+    if (havePattern.test(cleanedText)) {
+      const match = cleanedText.match(havePattern);
+      const item = match[1];
+      console.log(`🔍 SmartTask: Matched "i have" pattern, item: "${item}"`);
+      
+      if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
+        cleanedText = `Study for ${item}`;
+        console.log(`🔍 SmartTask: Generated "Study for ${item}"`);
+      } else if (item.toLowerCase().includes('homework')) {
+        cleanedText = `Complete ${item}`;
+        console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
+      } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment')) {
+        cleanedText = `Prepare for ${item}`;
+        console.log(`🔍 SmartTask: Generated "Prepare for ${item}"`);
+      } else {
+        cleanedText = `Complete ${item}`;
+        console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
       }
     }
     
-    // NEW: Also handle "i have [something]" without "a"
-    const haveSimplePattern = /^i have (.+)$/i;
-    if (haveSimplePattern.test(cleanedText)) {
-      const match = cleanedText.match(/^i have (.+)$/i);
-      if (match) {
-        const item = match[1];
-        console.log(`🔍 SmartTask: Matched "i have" pattern, item: "${item}"`);
-        if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
-          cleanedText = `Study for ${item}`;
-          console.log(`🔍 SmartTask: Generated "Study for ${item}"`);
-        } else if (item.toLowerCase().includes('homework')) {
-          cleanedText = `Complete ${item}`;
-          console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
-        } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment')) {
-          cleanedText = `Prepare for ${item}`;
-          console.log(`🔍 SmartTask: Generated "Prepare for ${item}"`);
-        } else {
-          cleanedText = `Complete ${item}`;
-          console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
-        }
+    // Handle "i got X" patterns
+    else if (gotPattern.test(cleanedText)) {
+      const match = cleanedText.match(gotPattern);
+      const item = match[1];
+      console.log(`🔍 SmartTask: Matched "i got" pattern, item: "${item}"`);
+      
+      if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
+        cleanedText = `Study for ${item}`;
+        console.log(`🔍 SmartTask: Generated "Study for ${item}"`);
+      } else if (item.toLowerCase().includes('homework')) {
+        cleanedText = `Complete ${item}`;
+        console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
+      } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment')) {
+        cleanedText = `Prepare for ${item}`;
+        console.log(`🔍 SmartTask: Generated "Prepare for ${item}"`);
+      } else {
+        cleanedText = `Complete ${item}`;
+        console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
+      }
+    }
+    
+    // Handle "i need X" patterns
+    else if (needPattern.test(cleanedText)) {
+      const match = cleanedText.match(needPattern);
+      const item = match[1];
+      console.log(`🔍 SmartTask: Matched "i need" pattern, item: "${item}"`);
+      
+      if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
+        cleanedText = `Study for ${item}`;
+        console.log(`🔍 SmartTask: Generated "Study for ${item}"`);
+      } else if (item.toLowerCase().includes('homework')) {
+        cleanedText = `Complete ${item}`;
+        console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
+      } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment')) {
+        cleanedText = `Prepare for ${item}`;
+        console.log(`🔍 SmartTask: Generated "Prepare for ${item}"`);
+      } else {
+        cleanedText = `Complete ${item}`;
+        console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
+      }
+    }
+    
+    // Handle "have X" patterns (after "i" is filtered out)
+    else if (haveSimplePattern.test(cleanedText)) {
+      const match = cleanedText.match(haveSimplePattern);
+      const item = match[1];
+      console.log(`🔍 SmartTask: Matched "have" pattern, item: "${item}"`);
+      
+      if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
+        cleanedText = `Study for ${item}`;
+        console.log(`🔍 SmartTask: Generated "Study for ${item}"`);
+      } else if (item.toLowerCase().includes('homework')) {
+        cleanedText = `Complete ${item}`;
+        console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
+      } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment')) {
+        cleanedText = `Prepare for ${item}`;
+        console.log(`🔍 SmartTask: Generated "Prepare for ${item}"`);
+      } else {
+        cleanedText = `Complete ${item}`;
+        console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
       }
     }
     
     // NEW: Handle cases where "i have" appears after other words
-    const haveAnywherePattern = /i have (.+)$/i;
     if (!cleanedText.startsWith('Study for') && !cleanedText.startsWith('Prepare for') && !cleanedText.startsWith('Work on') && !cleanedText.startsWith('Complete')) {
       const match = cleanedText.match(/i have (.+)$/i);
       if (match) {
@@ -241,6 +281,19 @@ const taskProcessor = {
     if (extractedTime) {
       const timeString = `${extractedTime.hour > 12 ? extractedTime.hour - 12 : extractedTime.hour}:${extractedTime.minute.toString().padStart(2, '0')}${extractedTime.hour >= 12 ? 'pm' : 'am'}`;
       cleanedText = `${cleanedText} at ${timeString}`;
+    }
+    
+    // FIX: If we extracted a date but the word "tomorrow" was removed, add it back for clarity
+    if (extractedDate && !cleanedText.toLowerCase().includes('tomorrow') && !cleanedText.toLowerCase().includes('today') && !cleanedText.toLowerCase().includes('next')) {
+      // Check if the extracted date is tomorrow
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      if (extractedDate.getDate() === tomorrow.getDate() && 
+          extractedDate.getMonth() === tomorrow.getMonth() && 
+          extractedDate.getFullYear() === tomorrow.getFullYear()) {
+        cleanedText = `${cleanedText} Tomorrow`;
+        console.log(`🔍 TaskProcessor: Added "Tomorrow" back to task text`);
+      }
     }
     
     console.log(`🔍 TaskProcessor: Final cleaned text: "${cleanedText}"`);
