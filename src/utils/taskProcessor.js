@@ -58,6 +58,7 @@ const taskProcessor = {
     extractedDate = this.parseNaturalDate(cleanedText);
     if (extractedDate) {
       console.log(`🔍 TaskProcessor: Extracted date: ${extractedDate.toLocaleString()}`);
+      console.log(`🔍 TaskProcessor: Text BEFORE date parsing: "${cleanedText}"`);
     }
     
     // NEW: Remove question phrases and task creation requests
@@ -114,10 +115,14 @@ const taskProcessor = {
              word.length > 0;
     });
     
+    console.log(`🔍 TaskProcessor: Words after filtering: [${words.join(', ')}]`);
+    
     // NEW: Clean up common patterns to make tasks more readable
     cleanedText = words.join(' ')
       .replace(/\s+/g, ' ') // Remove extra spaces
       .trim();
+    
+    console.log(`🔍 TaskProcessor: After joining words: "${cleanedText}"`);
     
     // Remove "to" if it's at the beginning and doesn't add meaning
     if (cleanedText.toLowerCase().startsWith('to ')) {
@@ -136,11 +141,17 @@ const taskProcessor = {
       'morrow': 'tomorrow'
     };
     
+    console.log(`🔍 TaskProcessor: Before spelling fixes: "${cleanedText}"`);
+    
     Object.entries(spellingFixesAfter).forEach(([wrong, correct]) => {
+      const before = cleanedText;
       cleanedText = cleanedText.replace(new RegExp(wrong, 'gi'), correct);
+      if (before !== cleanedText) {
+        console.log(`🔍 TaskProcessor: Fixed "${wrong}" → "${correct}"`);
+      }
     });
     
-    console.log(`🔍 TaskProcessor: After word filtering and spelling fixes: "${cleanedText}"`);
+    console.log(`🔍 TaskProcessor: After spelling fixes: "${cleanedText}"`);
     
     // NEW: Smart task name generation
     // If it's "i have a [something]", make it "Study for [Something]" or "Prepare for [Something]"
