@@ -118,6 +118,29 @@ const taskProcessor = {
     cleanedText = cleanedText.replace(/^i have to /i, '');
     cleanedText = cleanedText.replace(/^i want to /i, '');
     
+    // NEW: Smart task name generation
+    // If it's "i have a [something]", make it "Study for [Something]" or "Prepare for [Something]"
+    const havePattern = /^i have a (.+)$/i;
+    const gotPattern = /^i got a (.+)$/i;
+    const needPattern = /^i need a (.+)$/i;
+    
+    if (havePattern.test(cleanedText) || gotPattern.test(cleanedText) || needPattern.test(cleanedText)) {
+      const match = cleanedText.match(/(?:i have a|i got a|i need a) (.+)$/i);
+      if (match) {
+        const item = match[1];
+        // Determine the appropriate action based on the item
+        if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
+          cleanedText = `Study for ${item}`;
+        } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment') || item.toLowerCase().includes('interview')) {
+          cleanedText = `Prepare for ${item}`;
+        } else if (item.toLowerCase().includes('project') || item.toLowerCase().includes('assignment') || item.toLowerCase().includes('paper')) {
+          cleanedText = `Work on ${item}`;
+        } else {
+          cleanedText = `Prepare for ${item}`;
+        }
+      }
+    }
+    
     // Capitalize first letter of each word
     cleanedText = cleanedText.split(' ')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))

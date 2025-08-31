@@ -400,7 +400,11 @@ client.on('messageCreate', async message => {
     'therapy', 'consultation', 'follow-up', 'surgery', 'treatment',
     'deliverables', 'coordination', 'work timings', 'timeline', 'requirements',
     'deadlines', 'milestones', 'goals', 'objectives', 'targets', 'priorities',
-    'tasks', 'assignments', 'responsibilities', 'duties', 'chores', 'errands'
+    'tasks', 'assignments', 'responsibilities', 'duties', 'chores', 'errands',
+    // NEW: Add more natural task indicators
+    'test', 'exam', 'quiz', 'presentation', 'report', 'paper', 'essay',
+    'assignment', 'project', 'meeting', 'call', 'appointment', 'interview',
+    'deadline', 'due', 'finish', 'complete', 'submit', 'turn in', 'hand in'
   ];
   
   const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
@@ -420,7 +424,11 @@ client.on('messageCreate', async message => {
     'i need to schedule', 'i have to schedule', 'i should schedule',
     'i need to organize', 'i have to organize', 'i should organize',
     // NEW: Add "i have" for cases like "i have homework"
-    'i have', 'i got', 'i got to', 'gotta'
+    'i have', 'i got', 'i got to', 'gotta',
+    // NEW: Add more natural patterns
+    'i have a', 'i got a', 'i need a', 'i want a',
+    'i have an', 'i got an', 'i need an', 'i want an',
+    'i have some', 'i got some', 'i need some', 'i want some'
   ];
   
   const isLikelyTask = taskIndicators.some(indicator => messageContent.toLowerCase().includes(indicator));
