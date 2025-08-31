@@ -13,6 +13,7 @@ const taskProcessor = {
       'appoint ment': 'appointment',
       'tomoroor': 'tomorrow',
       'morrow': 'tomorrow',  // NEW: Fix "morrow" → "tomorrow"
+      'totomorrow': 'tomorrow',  // NEW: Fix "totomorrow" → "tomorrow"
       'dr ': 'doctor ',
       'doc ': 'doctor ',
       'apt ': 'appointment ',
@@ -98,12 +99,16 @@ const taskProcessor = {
       // NEW: Remove conversational fillers that don't add meaning to tasks
       const conversationFillers = ['well', 'so', 'um', 'uh', 'like', 'you know', 'actually', 'basically', 'good', 'bad', 'okay', 'ok', 'yeah', 'yes', 'no', 'nope', 'nah'];
       
+      // NEW: Remove standalone "i" that are likely typos (like "i biology test")
+      const standaloneI = word.toLowerCase() === 'i' && word.length === 1;
+      
       // IMPORTANT: Keep "i", "need", "to", "have", "want", "study", "homework", etc. - these are the actual task!
       // But remove "to" if it's just a filler (like "to study" -> "study")
       
       return !basicFillers.includes(word.toLowerCase()) && 
              !taskFillers.includes(word.toLowerCase()) && 
              !conversationFillers.includes(word.toLowerCase()) &&
+             !standaloneI &&
              word.length > 0;
     });
     
