@@ -137,8 +137,8 @@ const taskProcessor = {
     // NEW: Apply spelling fixes again after word filtering
     const spellingFixesAfter = {
       'totomorrow': 'tomorrow',
-      'tomoroor': 'tomorrow',
-      'morrow': 'tomorrow'
+      'tomoroor': 'tomorrow'
+      // REMOVED: 'morrow': 'tomorrow' - THIS WAS BREAKING "tomorrow"!
     };
     
     console.log(`🔍 TaskProcessor: Before spelling fixes: "${cleanedText}"`);
