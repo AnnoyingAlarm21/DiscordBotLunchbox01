@@ -725,7 +725,7 @@ REMEMBER: Teens have short attention spans - keep it brief and fun!`;
     
     const completion = await groq.chat.completions.create({
       messages: messages,
-      model: "llama3-8b-8192",
+      model: "llama-3.1-8b-instant",  // FIXED: Use updated model
       temperature: 0.7,
       max_tokens: 150,  // REDUCED: Shorter responses for teens
     });

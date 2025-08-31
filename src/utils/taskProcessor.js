@@ -141,6 +141,24 @@ const taskProcessor = {
       }
     }
     
+    // NEW: Also handle "i have [something]" without "a"
+    const haveSimplePattern = /^i have (.+)$/i;
+    if (haveSimplePattern.test(cleanedText)) {
+      const match = cleanedText.match(/^i have (.+)$/i);
+      if (match) {
+        const item = match[1];
+        if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
+          cleanedText = `Study for ${item}`;
+        } else if (item.toLowerCase().includes('homework')) {
+          cleanedText = `Complete ${item}`;
+        } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment')) {
+          cleanedText = `Prepare for ${item}`;
+        } else {
+          cleanedText = `Complete ${item}`;
+        }
+      }
+    }
+    
     // Capitalize first letter of each word
     cleanedText = cleanedText.split(' ')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
