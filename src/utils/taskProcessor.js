@@ -128,19 +128,26 @@ const taskProcessor = {
     const gotPattern = /^i got a (.+)$/i;
     const needPattern = /^i need a (.+)$/i;
     
+    console.log(`🔍 SmartTask: Checking patterns for "${cleanedText}"`);
+    
     if (havePattern.test(cleanedText) || gotPattern.test(cleanedText) || needPattern.test(cleanedText)) {
       const match = cleanedText.match(/(?:i have a|i got a|i need a) (.+)$/i);
       if (match) {
         const item = match[1];
+        console.log(`🔍 SmartTask: Matched "i have a" pattern, item: "${item}"`);
         // Determine the appropriate action based on the item
         if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
           cleanedText = `Study for ${item}`;
+          console.log(`🔍 SmartTask: Generated "Study for ${item}"`);
         } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment') || item.toLowerCase().includes('interview')) {
           cleanedText = `Prepare for ${item}`;
+          console.log(`🔍 SmartTask: Generated "Prepare for ${item}"`);
         } else if (item.toLowerCase().includes('project') || item.toLowerCase().includes('assignment') || item.toLowerCase().includes('paper')) {
           cleanedText = `Work on ${item}`;
+          console.log(`🔍 SmartTask: Generated "Work on ${item}"`);
         } else {
           cleanedText = `Prepare for ${item}`;
+          console.log(`🔍 SmartTask: Generated "Prepare for ${item}"`);
         }
       }
     }
@@ -151,14 +158,19 @@ const taskProcessor = {
       const match = cleanedText.match(/^i have (.+)$/i);
       if (match) {
         const item = match[1];
+        console.log(`🔍 SmartTask: Matched "i have" pattern, item: "${item}"`);
         if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
           cleanedText = `Study for ${item}`;
+          console.log(`🔍 SmartTask: Generated "Study for ${item}"`);
         } else if (item.toLowerCase().includes('homework')) {
           cleanedText = `Complete ${item}`;
+          console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
         } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment')) {
           cleanedText = `Prepare for ${item}`;
+          console.log(`🔍 SmartTask: Generated "Prepare for ${item}"`);
         } else {
           cleanedText = `Complete ${item}`;
+          console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
         }
       }
     }
