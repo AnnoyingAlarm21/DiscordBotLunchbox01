@@ -105,6 +105,8 @@ const taskProcessor = {
       // IMPORTANT: Keep "i", "need", "to", "have", "want", "study", "homework", etc. - these are the actual task!
       // But remove "to" if it's just a filler (like "to study" -> "study")
       
+      console.log(`🔍 WordFilter: Checking word "${word}" - basicFillers: ${basicFillers.includes(word.toLowerCase())}, taskFillers: ${taskFillers.includes(word.toLowerCase())}, conversationFillers: ${conversationFillers.includes(word.toLowerCase())}, standaloneI: ${standaloneI}`);
+      
       return !basicFillers.includes(word.toLowerCase()) && 
              !taskFillers.includes(word.toLowerCase()) && 
              !conversationFillers.includes(word.toLowerCase()) &&
