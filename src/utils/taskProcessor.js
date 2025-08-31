@@ -95,11 +95,15 @@ const taskProcessor = {
       // NEW: Be much less aggressive - only remove obvious task creation words
       const taskFillers = ['can', 'you', 'help', 'please', 'create', 'add', 'make', 'this', 'that', 'thing', 'task'];
       
+      // NEW: Remove conversational fillers that don't add meaning to tasks
+      const conversationFillers = ['well', 'so', 'um', 'uh', 'like', 'you know', 'actually', 'basically'];
+      
       // IMPORTANT: Keep "i", "need", "to", "have", "want", "study", "homework", etc. - these are the actual task!
       // But remove "to" if it's just a filler (like "to study" -> "study")
       
       return !basicFillers.includes(word.toLowerCase()) && 
              !taskFillers.includes(word.toLowerCase()) && 
+             !conversationFillers.includes(word.toLowerCase()) &&
              word.length > 0;
     });
     
@@ -214,19 +218,28 @@ const taskProcessor = {
     const now = new Date();
     const lowerText = text.toLowerCase();
     
+    console.log(`🔍 DateParser: Current date: ${now.toLocaleString()}`);
+    console.log(`🔍 DateParser: Processing text: "${text}"`);
+    
     // Immediate/urgent
     if (lowerText.includes('now') || lowerText.includes('asap') || lowerText.includes('urgent')) {
-      return new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes from now
+      const result = new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes from now
+      console.log(`🔍 DateParser: "now" → ${result.toLocaleString()}`);
+      return result;
     }
     
     // Today variations
     if (lowerText.includes('today') || lowerText.includes('tonight')) {
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const result = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      console.log(`🔍 DateParser: "today" → ${result.toLocaleString()}`);
+      return result;
     }
     
     // Tomorrow variations
     if (lowerText.includes('tomorrow')) {
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const result = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      console.log(`🔍 DateParser: "tomorrow" → ${result.toLocaleString()}`);
+      return result;
     }
     
     // Next day variations
