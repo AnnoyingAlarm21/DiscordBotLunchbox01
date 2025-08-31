@@ -127,6 +127,19 @@ const taskProcessor = {
     cleanedText = cleanedText.replace(/^i have to /i, '');
     cleanedText = cleanedText.replace(/^i want to /i, '');
     
+    // NEW: Apply spelling fixes again after word filtering
+    const spellingFixesAfter = {
+      'totomorrow': 'tomorrow',
+      'tomoroor': 'tomorrow',
+      'morrow': 'tomorrow'
+    };
+    
+    Object.entries(spellingFixesAfter).forEach(([wrong, correct]) => {
+      cleanedText = cleanedText.replace(new RegExp(wrong, 'gi'), correct);
+    });
+    
+    console.log(`🔍 TaskProcessor: After word filtering and spelling fixes: "${cleanedText}"`);
+    
     // NEW: Smart task name generation
     // If it's "i have a [something]", make it "Study for [Something]" or "Prepare for [Something]"
     const havePattern = /^i have a (.+)$/i;
