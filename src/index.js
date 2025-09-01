@@ -378,7 +378,9 @@ client.on('messageCreate', async message => {
   // NEW: Smart task detection from conversation (the core feature!)
   const taskKeywords = [
     'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
+    'got', 'have', 'need', 'want', 'plan', 'going', 'doing', 'attending',
     'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
+    'book club', 'club', 'class', 'session', 'event', 'activity', 'gathering',
     'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
     'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice',
     'schedule', 'due', 'get done', 'finish', 'complete', 'submit', 'turn in',
@@ -393,7 +395,7 @@ client.on('messageCreate', async message => {
   const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
   
   // Check if this is likely additional context rather than a new task
-  const contextIndicators = ['but', 'however', 'also', 'additionally', 'plus', 'for', 'at', 'on', 'in', 'when', 'where', 'how', 'because', 'since', 'while'];
+  const contextIndicators = ['but', 'however', 'also', 'additionally', 'plus', 'because', 'since', 'while'];
   const isLikelyContext = contextIndicators.some(indicator => messageContent.includes(indicator));
   
   // Check if user is in conversation mode and has pending tasks
@@ -691,7 +693,7 @@ REMEMBER: Teens have short attention spans - keep it brief and fun!`;
     
     const completion = await groq.chat.completions.create({
       messages: messages,
-      model: "llama3-8b-8192",
+              model: "llama-3.1-8b-8192",
       temperature: 0.7,
       max_tokens: 150,  // REDUCED: Shorter responses for teens
     });
