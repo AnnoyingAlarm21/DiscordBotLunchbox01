@@ -241,21 +241,30 @@ const taskProcessor = {
       const item = match[1];
       console.log(`🔍 SmartTask: Matched "have" pattern, item: "${item}"`);
       
-      if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
-        cleanedText = `Study for ${item}`;
-        console.log(`🔍 SmartTask: Generated "Study for ${item}"`);
-      } else if (item.toLowerCase().includes('homework')) {
-        cleanedText = `Complete ${item}`;
-        console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
-      } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment') || item.toLowerCase().includes('meetup')) {
-        cleanedText = `Attend ${item}`;
-        console.log(`🔍 SmartTask: Generated "Attend ${item}"`);
-      } else if (item.toLowerCase().includes('project') || item.toLowerCase().includes('assignment')) {
-        cleanedText = `Work on ${item}`;
-        console.log(`🔍 SmartTask: Generated "Work on ${item}"`);
+      // NEW: Clean up the item before processing
+      let cleanItem = item;
+      
+      // Remove "to" if it's at the beginning of the item
+      if (cleanItem.toLowerCase().startsWith('to ')) {
+        cleanItem = cleanItem.substring(3);
+        console.log(`🔍 SmartTask: Removed leading "to", item: "${cleanItem}"`);
+      }
+      
+      if (cleanItem.toLowerCase().includes('test') || cleanItem.toLowerCase().includes('exam') || cleanItem.toLowerCase().includes('quiz')) {
+        cleanedText = `Study for ${cleanItem}`;
+        console.log(`🔍 SmartTask: Generated "Study for ${cleanItem}"`);
+      } else if (cleanItem.toLowerCase().includes('homework')) {
+        cleanedText = `Complete ${cleanItem}`;
+        console.log(`🔍 SmartTask: Generated "Complete ${cleanItem}"`);
+      } else if (cleanItem.toLowerCase().includes('meeting') || cleanItem.toLowerCase().includes('appointment') || cleanItem.toLowerCase().includes('meetup')) {
+        cleanedText = `Attend ${cleanItem}`;
+        console.log(`🔍 SmartTask: Generated "Attend ${cleanItem}"`);
+      } else if (cleanItem.toLowerCase().includes('project') || cleanItem.toLowerCase().includes('assignment')) {
+        cleanedText = `Work on ${cleanItem}`;
+        console.log(`🔍 SmartTask: Generated "Work on ${cleanItem}"`);
       } else {
-        cleanedText = `Complete ${item}`;
-        console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
+        cleanedText = `Complete ${cleanItem}`;
+        console.log(`🔍 SmartTask: Generated "Complete ${cleanItem}"`);
       }
     }
     
