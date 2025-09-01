@@ -434,6 +434,44 @@ const taskProcessor = {
       return new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilFriday, 23, 59);
     }
     
+    // NEW: Specific dates like "September 4th", "Dec 15", "March 3rd"
+    const specificDatePattern = /(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+(\d{1,2})(?:st|nd|rd|th)?/i;
+    const match = lowerText.match(specificDatePattern);
+    if (match) {
+      const monthName = match[1];
+      const day = parseInt(match[2]);
+      
+      // Convert month name to number (0-11)
+      const monthMap = {
+        'january': 0, 'jan': 0,
+        'february': 1, 'feb': 1,
+        'march': 2, 'mar': 2,
+        'april': 3, 'apr': 3,
+        'may': 4,
+        'june': 5, 'jun': 5,
+        'july': 6, 'jul': 6,
+        'august': 7, 'aug': 7,
+        'september': 8, 'sep': 8,
+        'october': 9, 'oct': 9,
+        'november': 10, 'nov': 10,
+        'december': 11, 'dec': 11
+      };
+      
+      const month = monthMap[monthName.toLowerCase()];
+      if (month !== undefined && day >= 1 && day <= 31) {
+        // Assume current year unless it's already passed, then use next year
+        let year = now.getFullYear();
+        const targetDate = new Date(year, month, day);
+        if (targetDate < now) {
+          year++; // Use next year if date has passed
+        }
+        
+        const result = new Date(year, month, day);
+        console.log(`🔍 DateParser: "${match[0]}" → ${result.toLocaleString()}`);
+        return result;
+      }
+    }
+    
     return null;
   },
   
