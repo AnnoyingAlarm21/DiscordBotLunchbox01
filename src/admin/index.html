@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍱 Lunchbox AI - Admin Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px 20px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .tab:hover:not(.active) {
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        .content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            min-height: 500px;
+        }
+        
+        .user-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #667eea;
+        }
+        
+        .user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .user-id {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 1.1rem;
+        }
+        
+        .user-stats {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .user-stat {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        
+        .task-list {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .task-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #28a745;
+        }
+        
+        .task-item.completed {
+            border-left-color: #6c757d;
+            opacity: 0.7;
+        }
+        
+        .task-content {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        
+        .task-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .category-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .category-sweets { background: #ffeaa7; color: #d63031; }
+        .category-vegetables { background: #55a3ff; color: white; }
+        .category-savory { background: #fd79a8; color: white; }
+        .category-sides { background: #00b894; color: white; }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+        
+        .error {
+            background: #ffe6e6;
+            color: #d63031;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .refresh-btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+        
+        .search-box {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 1rem;
+        }
+        
+        .search-box:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍱 Lunchbox AI - Admin Dashboard</h1>
+            <p>Monitor all users, tasks, conversations, and threads</p>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalUsers">-</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalTasks">-</div>
+                <div class="stat-label">Total Tasks</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="activeConversations">-</div>
+                <div class="stat-label">Active Conversations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="privateThreads">-</div>
+                <div class="stat-label">Private Threads</div>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('users')">👥 All Users</div>
+            <div class="tab" onclick="showTab('conversations')">💬 Conversations</div>
+            <div class="tab" onclick="showTab('threads')">🧵 Threads</div>
+            <div class="tab" onclick="showTab('pending')">⏳ Pending Tasks</div>
+        </div>
+        
+        <div class="content">
+            <div id="users-tab" class="tab-content">
+                <input type="text" class="search-box" placeholder="Search users..." onkeyup="filterUsers(this.value)">
+                <div id="users-list" class="loading">Loading users...</div>
+            </div>
+            
+            <div id="conversations-tab" class="tab-content" style="display: none;">
+                <div id="conversations-list" class="loading">Loading conversations...</div>
+            </div>
+            
+            <div id="threads-tab" class="tab-content" style="display: none;">
+                <div id="threads-list" class="loading">Loading threads...</div>
+            </div>
+            
+            <div id="pending-tab" class="tab-content" style="display: none;">
+                <div id="pending-list" class="loading">Loading pending tasks...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allData = {};
+        
+        async function loadData() {
+            try {
+                const response = await fetch('/api/users');
+                allData = await response.json();
+                updateStats();
+                showTab('users');
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('users-list').innerHTML = '<div class="error">Failed to load data. Please try again.</div>';
+            }
+        }
+        
+        function updateStats() {
+            document.getElementById('totalUsers').textContent = allData.totalUsers || 0;
+            document.getElementById('totalTasks').textContent = allData.totalTasks || 0;
+            document.getElementById('activeConversations').textContent = allData.botData?.activeConversations?.length || 0;
+            document.getElementById('privateThreads').textContent = allData.botData?.privateThreads?.length || 0;
+        }
+        
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(tabName + '-tab').style.display = 'block';
+            event.target.classList.add('active');
+            
+            // Load tab content
+            switch(tabName) {
+                case 'users':
+                    displayUsers();
+                    break;
+                case 'conversations':
+                    displayConversations();
+                    break;
+                case 'threads':
+                    displayThreads();
+                    break;
+                case 'pending':
+                    displayPendingTasks();
+                    break;
+            }
+        }
+        
+        function displayUsers() {
+            const usersList = document.getElementById('users-list');
+            const users = allData.users || {};
+            
+            if (Object.keys(users).length === 0) {
+                usersList.innerHTML = '<div class="loading">No users found</div>';
+                return;
+            }
+            
+            let html = '';
+            Object.entries(users).forEach(([userId, userData]) => {
+                const tasks = userData.tasks || [];
+                const completedTasks = tasks.filter(task => task.completed).length;
+                const pendingTasks = tasks.length - completedTasks;
+                
+                html += `
+                    <div class="user-card">
+                        <div class="user-header">
+                            <div class="user-id">User ID: ${userId}</div>
+                            <div class="user-stats">
+                                <div class="user-stat">📋 ${tasks.length} total tasks</div>
+                                <div class="user-stat">✅ ${completedTasks} completed</div>
+                                <div class="user-stat">⏳ ${pendingTasks} pending</div>
+                            </div>
+                        </div>
+                        <div class="task-list">
+                            ${tasks.map(task => `
+                                <div class="task-item ${task.completed ? 'completed' : ''}">
+                                    <div class="task-content">${task.content}</div>
+                                    <div class="task-meta">
+                                        <span class="category-badge category-${task.category.toLowerCase()}">${task.category}</span>
+                                        <span>📅 ${task.createdAt ? new Date(task.createdAt).toLocaleDateString() : 'N/A'}</span>
+                                        ${task.deadline ? `<span>⏰ ${new Date(task.deadline.fullDate).toLocaleString()}</span>` : ''}
+                                        ${task.priority ? `<span>🎯 ${task.priority}</span>` : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            usersList.innerHTML = html;
+        }
+        
+        function displayConversations() {
+            const conversationsList = document.getElementById('conversations-list');
+            const conversations = allData.botData?.activeConversations || [];
+            
+            if (conversations.length === 0) {
+                conversationsList.innerHTML = '<div class="loading">No active conversations</div>';
+                return;
+            }
+            
+            let html = '<h3>Active Conversations</h3>';
+            conversations.forEach(userId => {
+                html += `<div class="user-card"><div class="user-id">User ID: ${userId}</div></div>`;
+            });
+            
+            conversationsList.innerHTML = html;
+        }
+        
+        function displayThreads() {
+            const threadsList = document.getElementById('threads-list');
+            const threads = allData.botData?.privateThreads || [];
+            
+            if (threads.length === 0) {
+                threadsList.innerHTML = '<div class="loading">No private threads</div>';
+                return;
+            }
+            
+            let html = '<h3>Private Threads</h3>';
+            threads.forEach(threadId => {
+                html += `<div class="user-card"><div class="user-id">Thread ID: ${threadId}</div></div>`;
+            });
+            
+            threadsList.innerHTML = html;
+        }
+        
+        function displayPendingTasks() {
+            const pendingList = document.getElementById('pending-list');
+            const pendingTasks = allData.botData?.pendingTasks || [];
+            
+            if (pendingTasks.length === 0) {
+                pendingList.innerHTML = '<div class="loading">No pending tasks</div>';
+                return;
+            }
+            
+            let html = '<h3>Pending Tasks</h3>';
+            pendingTasks.forEach(([userId, taskData]) => {
+                html += `
+                    <div class="user-card">
+                        <div class="user-id">User ID: ${userId}</div>
+                        <div class="task-content">${taskData.cleanText || taskData.originalText || 'Unknown task'}</div>
+                    </div>
+                `;
+            });
+            
+            pendingList.innerHTML = html;
+        }
+        
+        function filterUsers(searchTerm) {
+            const userCards = document.querySelectorAll('.user-card');
+            userCards.forEach(card => {
+                const userId = card.querySelector('.user-id').textContent.toLowerCase();
+                if (userId.includes(searchTerm.toLowerCase())) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+        
+        // Auto-refresh every 30 seconds
+        setInterval(loadData, 30000);
+        
+        // Load data on page load
+        loadData();
+    </script>
+</body>
+</html>

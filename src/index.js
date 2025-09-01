@@ -5,6 +5,7 @@ const path = require('path');
 const http = require('http');
 const taskProcessor = require('./utils/taskProcessor');
 const taskStorage = require('./utils/taskStorage');
+const { startAdminDashboard } = require('./admin/server');
 
 // Load environment variables from .env file
 config();
@@ -58,6 +59,12 @@ client.once('ready', () => {
   client.userTasks = taskStorage.loadTasks();
   console.log(`📁 Loaded ${client.userTasks.size} users with tasks from storage`);
   
+  // Make bot client globally available for admin dashboard
+  global.botClient = client;
+
+  // Start admin dashboard
+  startAdminDashboard();
+
   // Log process information for debugging
   console.log(`📊 Process ID: ${process.pid}`);
   console.log(`📊 Node Version: ${process.version}`);
