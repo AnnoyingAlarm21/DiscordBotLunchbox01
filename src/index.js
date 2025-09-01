@@ -243,11 +243,20 @@ client.on('messageCreate', async message => {
   // Check for explicit task creation requests
   if (messageContent.toLowerCase().startsWith('create task:') || 
       messageContent.toLowerCase().startsWith('add task:') ||
-      messageContent.toLowerCase().startsWith('make task:')) {
+      messageContent.toLowerCase().startsWith('make task:') ||
+      messageContent.toLowerCase().includes('create it as a task') ||
+      messageContent.toLowerCase().includes('add it as a task') ||
+      messageContent.toLowerCase().includes('make it a task') ||
+      messageContent.toLowerCase().includes('create that as a task') ||
+      messageContent.toLowerCase().includes('add that as a task')) {
     console.log(`🎯 EXPLICIT TASK REQUEST: "${messageContent}"`);
     
-    // Extract the task text after the colon
-    const taskText = messageContent.split(':')[1]?.trim();
+    // Extract the task text after the colon, or use the full message
+    let taskText = messageContent;
+    if (messageContent.includes(':')) {
+      taskText = messageContent.split(':')[1]?.trim();
+    }
+    
     if (taskText) {
       console.log(`🎯 Processing explicit task: "${taskText}"`);
       await processTaskFromConversation(message, taskText, client);
