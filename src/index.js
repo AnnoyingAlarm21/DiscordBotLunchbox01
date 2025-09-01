@@ -693,6 +693,25 @@ async function handleRegularConversation(message, messageContent) {
 async function handleAIConversation(message, messageContent, client) {
   console.log(`🤖 AI conversation handler called with: "${messageContent}"`);
   
+  // Initialize global message tracking to prevent duplicates
+  if (!client.lastResponseTime) {
+    client.lastResponseTime = new Map();
+  }
+
+  // Check if we've already responded to this user recently
+  const userId = message.author.id;
+  const now = new Date();
+  const lastResponse = client.lastResponseTime.get(userId);
+  const timeSinceLastResponse = lastResponse ? (now - lastResponse) : 60000; // Default to 60 seconds
+
+  if (timeSinceLastResponse < 3000) { // 3 seconds
+    console.log(`🔇 Preventing duplicate response to ${message.author.username} (last response was ${timeSinceLastResponse}ms ago)`);
+    return;
+  }
+
+  // Update last response time
+  client.lastResponseTime.set(userId, now);
+  
   // Get user's conversation context
   if (!client.conversationContext.has(message.author.id)) {
     client.conversationContext.set(message.author.id, {
@@ -781,6 +800,20 @@ async function handleAIConversation(message, messageContent, client) {
     
   } catch (error) {
     console.error('Error with AI conversation:', error);
+    
+    // Check again for duplicate prevention in fallback
+    const userId = message.author.id;
+    const now = new Date();
+    const lastResponse = client.lastResponseTime.get(userId);
+    const timeSinceLastResponse = lastResponse ? (now - lastResponse) : 60000;
+
+    if (timeSinceLastResponse < 3000) { // 3 seconds
+      console.log(`🔇 Preventing duplicate fallback response to ${message.author.username}`);
+      return;
+    }
+
+    // Update last response time for fallback
+    client.lastResponseTime.set(userId, now);
     
     // Fallback response
     const fallbackResponse = "Hey! I'm here to chat and help you organize your tasks. What's up?";
