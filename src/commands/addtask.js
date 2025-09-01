@@ -44,12 +44,10 @@ module.exports = {
         .addChoices(
           { name: 'Today', value: 'today' },
           { name: 'Tomorrow', value: 'tomorrow' },
-          { name: 'After Tomorrow', value: 'after_tomorrow' },
           { name: 'This Week', value: 'this_week' },
           { name: 'Next Week', value: 'next_week' },
           { name: 'This Month', value: 'this_month' },
-          { name: 'Next Month', value: 'next_month' },
-          { name: 'Custom Date', value: 'custom' }
+          { name: 'Next Month', value: 'next_month' }
         )
     )
     .addStringOption(option =>
@@ -57,37 +55,12 @@ module.exports = {
         .setDescription('What time is this task due?')
         .setRequired(false)
         .addChoices(
-          { name: '12:00 AM (Midnight)', value: '12:00 AM' },
-          { name: '1:00 AM', value: '1:00 AM' },
-          { name: '2:00 AM', value: '2:00 AM' },
-          { name: '3:00 AM', value: '3:00 AM' },
-          { name: '4:00 AM', value: '4:00 AM' },
-          { name: '5:00 AM', value: '5:00 AM' },
-          { name: '6:00 AM', value: '6:00 AM' },
-          { name: '7:00 AM', value: '7:00 AM' },
-          { name: '8:00 AM', value: '8:00 AM' },
-          { name: '9:00 AM', value: '9:00 AM' },
-          { name: '10:00 AM', value: '10:00 AM' },
-          { name: '11:00 AM', value: '11:00 AM' },
-          { name: '12:00 PM (Noon)', value: '12:00 PM' },
-          { name: '1:00 PM', value: '1:00 PM' },
-          { name: '2:00 PM', value: '2:00 PM' },
-          { name: '3:00 PM', value: '3:00 PM' },
-          { name: '4:00 PM', value: '4:00 PM' },
-          { name: '5:00 PM', value: '5:00 PM' },
-          { name: '6:00 PM', value: '6:00 PM' },
-          { name: '7:00 PM', value: '7:00 PM' },
-          { name: '8:00 PM', value: '8:00 PM' },
-          { name: '9:00 PM', value: '9:00 PM' },
-          { name: '10:00 PM', value: '10:00 PM' },
-          { name: '11:00 PM', value: '11:00 PM' },
-          { name: 'Custom Time (e.g., 2:30 PM)', value: 'custom' }
+          { name: 'Morning (9 AM)', value: '9:00 AM' },
+          { name: 'Noon (12 PM)', value: '12:00 PM' },
+          { name: 'Afternoon (3 PM)', value: '3:00 PM' },
+          { name: 'Evening (6 PM)', value: '6:00 PM' },
+          { name: 'Night (9 PM)', value: '9:00 PM' }
         )
-    )
-    .addStringOption(option =>
-      option.setName('custom_time')
-        .setDescription('Enter custom time (e.g., 2:30 PM, 14:30, 3pm) - only needed if you selected "Custom Time" above')
-        .setRequired(false)
     )
     .addStringOption(option =>
       option.setName('priority')
@@ -97,7 +70,7 @@ module.exports = {
           { name: '🟢 Low', value: 'low' },
           { name: '🟡 Medium', value: 'medium' },
           { name: '🟠 High', value: 'high' },
-          { name: '🔴 DEFCON 0', value: 'defcon0' }
+          { name: '🔴 Urgent', value: 'defcon0' }
         )
     ),
 
@@ -105,7 +78,6 @@ module.exports = {
     const rawTaskContent = interaction.options.getString('task');
     const scheduledDate = interaction.options.getString('date');
     const scheduledTime = interaction.options.getString('time');
-    const customTime = interaction.options.getString('custom_time');
     const priority = interaction.options.getString('priority');
     
     // Use custom time if time is set to "custom"
@@ -395,7 +367,7 @@ Respond with ONLY the category name (e.g., "🍪 Sweets" or "🥦 Vegetables").`
 
     const completion = await groq.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
-      model: "llama-3.1-8b-instant",  // FIXED: Use updated model
+      model: "llama3-8b-8192",
       max_tokens: 10,
       temperature: 0.3
     });

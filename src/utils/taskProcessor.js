@@ -13,7 +13,6 @@ const taskProcessor = {
       'appoint ment': 'appointment',
       'tomoroor': 'tomorrow',
       'morrow': 'tomorrow',  // NEW: Fix "morrow" → "tomorrow"
-      'totomorrow': 'tomorrow',  // NEW: Fix "totomorrow" → "tomorrow"
       'dr ': 'doctor ',
       'doc ': 'doctor ',
       'apt ': 'appointment ',
@@ -27,19 +26,14 @@ const taskProcessor = {
     console.log(`🔍 TaskProcessor: After spelling fixes: "${cleanedText}"`);
     
     // Extract time information BEFORE any text cleaning
-    // NEW: Handle typos like "pkm" for "pm"
-    let timeMatch = cleanedText.match(/(\d{1,2}):?(\d{2})?\s*(am|pm|pkm|amk)/i);
+    const timeMatch = cleanedText.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)/i);
     let extractedTime = null;
     let extractedDate = null;
     
     if (timeMatch) {
       const hour = parseInt(timeMatch[1]);
       const minute = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
-      let period = timeMatch[3].toLowerCase();
-      
-      // Fix common typos
-      if (period === 'pkm') period = 'pm';
-      if (period === 'amk') period = 'am';
+      const period = timeMatch[3].toLowerCase();
       
       // Convert to 24-hour format
       let hour24 = hour;
@@ -58,7 +52,6 @@ const taskProcessor = {
     extractedDate = this.parseNaturalDate(cleanedText);
     if (extractedDate) {
       console.log(`🔍 TaskProcessor: Extracted date: ${extractedDate.toLocaleString()}`);
-      console.log(`🔍 TaskProcessor: Text BEFORE date parsing: "${cleanedText}"`);
     }
     
     // NEW: Remove question phrases and task creation requests
@@ -93,231 +86,22 @@ const taskProcessor = {
     const words = cleanedText.split(/\s+/).filter(word => {
       // Keep all meaningful words, only remove very basic fillers
       const basicFillers = ['and', 'or', 'but', 'the', 'a', 'an', 'in', 'on', 'at', 'for', 'of', 'with', 'by'];
+      // NEW: Don't remove "to" and "have" as they're often important for task meaning
       
-      // NEW: Be much less aggressive - only remove obvious task creation words
-      const taskFillers = ['can', 'you', 'help', 'please', 'create', 'add', 'make', 'this', 'that', 'thing', 'task'];
-      
-      // NEW: Remove conversational fillers that don't add meaning to tasks
-      const conversationFillers = ['well', 'so', 'um', 'uh', 'like', 'you know', 'actually', 'basically', 'good', 'bad', 'okay', 'ok', 'yeah', 'yes', 'no', 'nope', 'nah'];
-      
-      // NEW: Remove standalone "i" that are likely typos (like "i biology test")
-      const standaloneI = word.toLowerCase() === 'i' && word.length === 1;
-      
-      // IMPORTANT: Keep "i", "need", "to", "have", "want", "study", "homework", etc. - these are the actual task!
-      // But remove "to" if it's just a filler (like "to study" -> "study")
-      
-      console.log(`🔍 WordFilter: Checking word "${word}" - basicFillers: ${basicFillers.includes(word.toLowerCase())}, taskFillers: ${taskFillers.includes(word.toLowerCase())}, conversationFillers: ${conversationFillers.includes(word.toLowerCase())}, standaloneI: ${standaloneI}`);
+      // NEW: Remove common task creation phrases that don't add meaning
+      const taskFillers = ['i', 'have', 'need', 'want', 'got', 'got to', 'gotta', 'do', 'my', 'me', 'can', 'you', 'help', 'please', 'create', 'add', 'make', 'this', 'that', 'thing', 'task'];
       
       return !basicFillers.includes(word.toLowerCase()) && 
              !taskFillers.includes(word.toLowerCase()) && 
-             !conversationFillers.includes(word.toLowerCase()) &&
-             !standaloneI &&
              word.length > 0;
     });
     
-    console.log(`🔍 TaskProcessor: Words after filtering: [${words.join(', ')}]`);
+    console.log(`🔍 TaskProcessor: After word filtering: "${words.join(' ')}"`);
     
-    // NEW: Clean up common patterns to make tasks more readable
+    // Clean up the task text
     cleanedText = words.join(' ')
       .replace(/\s+/g, ' ') // Remove extra spaces
       .trim();
-    
-    console.log(`🔍 TaskProcessor: After joining words: "${cleanedText}"`);
-    
-    // Remove "to" if it's at the beginning and doesn't add meaning
-    if (cleanedText.toLowerCase().startsWith('to ')) {
-      cleanedText = cleanedText.substring(3);
-    }
-    
-    // Remove "i need to" -> just keep the action
-    cleanedText = cleanedText.replace(/^i need to /i, '');
-    cleanedText = cleanedText.replace(/^i have to /i, '');
-    cleanedText = cleanedText.replace(/^i want to /i, '');
-    
-    // NEW: Apply spelling fixes again after word filtering
-    const spellingFixesAfter = {
-      'totomorrow': 'tomorrow',
-      'tomoroor': 'tomorrow'
-      // REMOVED: 'morrow': 'tomorrow' - THIS WAS BREAKING "tomorrow"!
-    };
-    
-    console.log(`🔍 TaskProcessor: Before spelling fixes: "${cleanedText}"`);
-    
-    Object.entries(spellingFixesAfter).forEach(([wrong, correct]) => {
-      const before = cleanedText;
-      cleanedText = cleanedText.replace(new RegExp(wrong, 'gi'), correct);
-      if (before !== cleanedText) {
-        console.log(`🔍 TaskProcessor: Fixed "${wrong}" → "${correct}"`);
-      }
-    });
-    
-    console.log(`🔍 TaskProcessor: After spelling fixes: "${cleanedText}"`);
-    
-    // NEW: Smart task name generation
-    // Check for "i have" patterns and transform them into better task names
-    const havePattern = /^i have (.+)$/i;
-    const gotPattern = /^i got (.+)$/i;
-    const needPattern = /^i need (.+)$/i;
-    const haveSimplePattern = /^have (.+)$/i;
-    const haveAnywherePattern = /i have (.+)$/i;
-    
-    console.log(`🔍 SmartTask: Checking patterns for "${cleanedText}"`);
-    
-    // Handle "i have a X" patterns
-    if (havePattern.test(cleanedText)) {
-      const match = cleanedText.match(havePattern);
-      const item = match[1];
-      console.log(`🔍 SmartTask: Matched "i have" pattern, item: "${item}"`);
-      
-      if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
-        cleanedText = `Study for ${item}`;
-        console.log(`🔍 SmartTask: Generated "Study for ${item}"`);
-      } else if (item.toLowerCase().includes('homework')) {
-        cleanedText = `Complete ${item}`;
-        console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
-      } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment') || item.toLowerCase().includes('meetup')) {
-        cleanedText = `Attend ${item}`;
-        console.log(`🔍 SmartTask: Generated "Attend ${item}"`);
-      } else if (item.toLowerCase().includes('project') || item.toLowerCase().includes('assignment')) {
-        cleanedText = `Work on ${item}`;
-        console.log(`🔍 SmartTask: Generated "Work on ${item}"`);
-      } else {
-        cleanedText = `Complete ${item}`;
-        console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
-      }
-    }
-    
-    // Handle "i got X" patterns
-    else if (gotPattern.test(cleanedText)) {
-      const match = cleanedText.match(gotPattern);
-      const item = match[1];
-      console.log(`🔍 SmartTask: Matched "i got" pattern, item: "${item}"`);
-      
-      if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
-        cleanedText = `Study for ${item}`;
-        console.log(`🔍 SmartTask: Generated "Study for ${item}"`);
-      } else if (item.toLowerCase().includes('homework')) {
-        cleanedText = `Complete ${item}`;
-        console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
-      } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment') || item.toLowerCase().includes('meetup')) {
-        cleanedText = `Attend ${item}`;
-        console.log(`🔍 SmartTask: Generated "Attend ${item}"`);
-      } else if (item.toLowerCase().includes('project') || item.toLowerCase().includes('assignment')) {
-        cleanedText = `Work on ${item}`;
-        console.log(`🔍 SmartTask: Generated "Work on ${item}"`);
-      } else {
-        cleanedText = `Complete ${item}`;
-        console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
-      }
-    }
-    
-    // Handle "i need X" patterns
-    else if (needPattern.test(cleanedText)) {
-      const match = cleanedText.match(needPattern);
-      const item = match[1];
-      console.log(`🔍 SmartTask: Matched "i need" pattern, item: "${item}"`);
-      
-      if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
-        cleanedText = `Study for ${item}`;
-        console.log(`🔍 SmartTask: Generated "Study for ${item}"`);
-      } else if (item.toLowerCase().includes('homework')) {
-        cleanedText = `Complete ${item}`;
-        console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
-      } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment') || item.toLowerCase().includes('meetup')) {
-        cleanedText = `Attend ${item}`;
-        console.log(`🔍 SmartTask: Generated "Attend ${item}"`);
-      } else if (item.toLowerCase().includes('project') || item.toLowerCase().includes('assignment')) {
-        cleanedText = `Work on ${item}`;
-        console.log(`🔍 SmartTask: Generated "Work on ${item}"`);
-      } else {
-        cleanedText = `Complete ${item}`;
-        console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
-      }
-    }
-    
-    // Handle "have X" patterns (after "i" is filtered out)
-    else if (haveSimplePattern.test(cleanedText)) {
-      const match = cleanedText.match(haveSimplePattern);
-      const item = match[1];
-      console.log(`🔍 SmartTask: Matched "have" pattern, item: "${item}"`);
-      
-      // NEW: Clean up the item before processing
-      let cleanItem = item;
-      
-      // Remove "to" if it's at the beginning of the item
-      if (cleanItem.toLowerCase().startsWith('to ')) {
-        cleanItem = cleanItem.substring(3);
-        console.log(`🔍 SmartTask: Removed leading "to", item: "${cleanItem}"`);
-      }
-      
-      if (cleanItem.toLowerCase().includes('test') || cleanItem.toLowerCase().includes('exam') || cleanItem.toLowerCase().includes('quiz')) {
-        cleanedText = `Study for ${cleanItem}`;
-        console.log(`🔍 SmartTask: Generated "Study for ${cleanItem}"`);
-      } else if (cleanItem.toLowerCase().includes('homework')) {
-        cleanedText = `Complete ${cleanItem}`;
-        console.log(`🔍 SmartTask: Generated "Complete ${cleanItem}"`);
-      } else if (cleanItem.toLowerCase().includes('meeting') || cleanItem.toLowerCase().includes('appointment') || cleanItem.toLowerCase().includes('meetup')) {
-        cleanedText = `Attend ${cleanItem}`;
-        console.log(`🔍 SmartTask: Generated "Attend ${cleanItem}"`);
-      } else if (cleanItem.toLowerCase().includes('project') || cleanItem.toLowerCase().includes('assignment')) {
-        cleanedText = `Work on ${cleanItem}`;
-        console.log(`🔍 SmartTask: Generated "Work on ${cleanItem}"`);
-      } else {
-        cleanedText = `Complete ${cleanItem}`;
-        console.log(`🔍 SmartTask: Generated "Complete ${cleanItem}"`);
-      }
-    }
-    
-    // NEW: Handle cases where "i have" appears after other words
-    if (!cleanedText.startsWith('Study for') && !cleanedText.startsWith('Prepare for') && !cleanedText.startsWith('Work on') && !cleanedText.startsWith('Complete') && !cleanedText.startsWith('Attend')) {
-      const match = cleanedText.match(/i have (.+)$/i);
-      if (match) {
-        const item = match[1];
-        console.log(`🔍 SmartTask: Matched "i have" anywhere pattern, item: "${item}"`);
-        if (item.toLowerCase().includes('test') || item.toLowerCase().includes('exam') || item.toLowerCase().includes('quiz')) {
-          cleanedText = `Study for ${item}`;
-          console.log(`🔍 SmartTask: Generated "Study for ${item}"`);
-        } else if (item.toLowerCase().includes('homework')) {
-          cleanedText = `Complete ${item}`;
-          console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
-        } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment') || item.toLowerCase().includes('meetup')) {
-          cleanedText = `Attend ${item}`;
-          console.log(`🔍 SmartTask: Generated "Attend ${item}"`);
-        } else if (item.toLowerCase().includes('project') || item.toLowerCase().includes('assignment')) {
-          cleanedText = `Work on ${item}`;
-          console.log(`🔍 SmartTask: Generated "Work on ${item}"`);
-        } else {
-          cleanedText = `Complete ${item}`;
-          console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
-        }
-      }
-    }
-    
-    // NEW: Clean up task names to remove redundant words and dates
-    if (cleanedText.includes('Complete To')) {
-      cleanedText = cleanedText.replace('Complete To', '');
-      console.log(`🔍 SmartTask: Removed redundant "Complete To"`);
-    }
-    
-    if (cleanedText.includes('Participate In')) {
-      cleanedText = cleanedText.replace('Participate In', 'Attend');
-      console.log(`🔍 SmartTask: Changed "Participate In" to "Attend"`);
-    }
-    
-    if (cleanedText.includes('Participate')) {
-      cleanedText = cleanedText.replace('Participate', 'Attend');
-      console.log(`🔍 SmartTask: Changed "Participate" to "Attend"`);
-    }
-    
-    // Remove dates from task names (they should be in deadlines)
-    const datePattern = /\b(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{1,2}(?:st|nd|rd|th)?\b/i;
-    cleanedText = cleanedText.replace(datePattern, '').trim();
-    console.log(`🔍 SmartTask: Removed date from task name`);
-    
-    // Clean up extra spaces and punctuation
-    cleanedText = cleanedText.replace(/\s+/g, ' ').trim();
-    cleanedText = cleanedText.replace(/\s*,\s*/g, ' ');
-    console.log(`🔍 SmartTask: Cleaned up spacing and punctuation`);
     
     // Capitalize first letter of each word
     cleanedText = cleanedText.split(' ')
@@ -326,25 +110,6 @@ const taskProcessor = {
     
     // Remove trailing punctuation
     cleanedText = cleanedText.replace(/[.!?]+$/, '');
-    
-    // NEW: If we extracted time, add it back to the task text for clarity
-    if (extractedTime) {
-      const timeString = `${extractedTime.hour > 12 ? extractedTime.hour - 12 : extractedTime.hour}:${extractedTime.minute.toString().padStart(2, '0')}${extractedTime.hour >= 12 ? 'pm' : 'am'}`;
-      cleanedText = `${cleanedText} at ${timeString}`;
-    }
-    
-    // FIX: If we extracted a date but the word "tomorrow" was removed, add it back for clarity
-    if (extractedDate && !cleanedText.toLowerCase().includes('tomorrow') && !cleanedText.toLowerCase().includes('today') && !cleanedText.toLowerCase().includes('next')) {
-      // Check if the extracted date is tomorrow
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      if (extractedDate.getDate() === tomorrow.getDate() && 
-          extractedDate.getMonth() === tomorrow.getMonth() && 
-          extractedDate.getFullYear() === tomorrow.getFullYear()) {
-        cleanedText = `${cleanedText} Tomorrow`;
-        console.log(`🔍 TaskProcessor: Added "Tomorrow" back to task text`);
-      }
-    }
     
     console.log(`🔍 TaskProcessor: Final cleaned text: "${cleanedText}"`);
     
@@ -364,17 +129,6 @@ const taskProcessor = {
         date: extractedDate,
         time: null,
         fullDate: extractedDate
-      } : extractedTime ? {
-        // NEW: If only time is mentioned, use today's date
-        date: new Date(),
-        time: extractedTime,
-        fullDate: new Date(
-          new Date().getFullYear(),
-          new Date().getMonth(),
-          new Date().getDate(),
-          extractedTime.hour,
-          extractedTime.minute
-        )
       } : null
     };
     
@@ -387,28 +141,19 @@ const taskProcessor = {
     const now = new Date();
     const lowerText = text.toLowerCase();
     
-    console.log(`🔍 DateParser: Current date: ${now.toLocaleString()}`);
-    console.log(`🔍 DateParser: Processing text: "${text}"`);
-    
     // Immediate/urgent
     if (lowerText.includes('now') || lowerText.includes('asap') || lowerText.includes('urgent')) {
-      const result = new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes from now
-      console.log(`🔍 DateParser: "now" → ${result.toLocaleString()}`);
-      return result;
+      return new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes from now
     }
     
     // Today variations
     if (lowerText.includes('today') || lowerText.includes('tonight')) {
-      const result = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      console.log(`🔍 DateParser: "today" → ${result.toLocaleString()}`);
-      return result;
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate());
     }
     
     // Tomorrow variations
     if (lowerText.includes('tomorrow')) {
-      const result = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      console.log(`🔍 DateParser: "tomorrow" → ${result.toLocaleString()}`);
-      return result;
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     }
     
     // Next day variations
@@ -482,44 +227,6 @@ const taskProcessor = {
     if (lowerText.includes('end of week') || lowerText.includes('by end of week')) {
       const daysUntilFriday = (5 - now.getDay() + 7) % 7;
       return new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilFriday, 23, 59);
-    }
-    
-    // NEW: Specific dates like "September 4th", "Dec 15", "March 3rd"
-    const specificDatePattern = /(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+(\d{1,2})(?:st|nd|rd|th)?/i;
-    const match = lowerText.match(specificDatePattern);
-    if (match) {
-      const monthName = match[1];
-      const day = parseInt(match[2]);
-      
-      // Convert month name to number (0-11)
-      const monthMap = {
-        'january': 0, 'jan': 0,
-        'february': 1, 'feb': 1,
-        'march': 2, 'mar': 2,
-        'april': 3, 'apr': 3,
-        'may': 4,
-        'june': 5, 'jun': 5,
-        'july': 6, 'jul': 6,
-        'august': 7, 'aug': 7,
-        'september': 8, 'sep': 8,
-        'october': 9, 'oct': 9,
-        'november': 10, 'nov': 10,
-        'december': 11, 'dec': 11
-      };
-      
-      const month = monthMap[monthName.toLowerCase()];
-      if (month !== undefined && day >= 1 && day <= 31) {
-        // Assume current year unless it's already passed, then use next year
-        let year = now.getFullYear();
-        const targetDate = new Date(year, month, day);
-        if (targetDate < now) {
-          year++; // Use next year if date has passed
-        }
-        
-        const result = new Date(year, month, day);
-        console.log(`🔍 DateParser: "${match[0]}" → ${result.toLocaleString()}`);
-        return result;
-      }
     }
     
     return null;

@@ -105,38 +105,28 @@ module.exports = {
           inline: false
         },
         {
-          name: '/calendar [view]',
-          value: 'View your scheduled tasks in a calendar format (today/week/month/all)',
+          name: '/thread',
+          value: 'Create a private AI conversation thread',
+          inline: false
+        },
+        {
+          name: '/calendar',
+          value: 'View your scheduled tasks in a calendar-like format',
+          inline: false
+        },
+        {
+          name: '/timer',
+          value: 'Set a countdown timer and get notified when it goes off',
+          inline: false
+        },
+        {
+          name: '/voice',
+          value: 'Voice commands for Lunchbox bot',
           inline: false
         },
         {
           name: '/testnotification',
           value: 'Send a test DM notification to verify the reminder system is working',
-          inline: false
-        },
-        {
-          name: '/timer [minutes] [label]',
-          value: 'Set a countdown timer and get DM notifications every 5 seconds when it goes off',
-          inline: false
-        },
-        {
-          name: '/mytimers',
-          value: 'Show your currently active timers',
-          inline: false
-        },
-        {
-          name: '/canceltimer [timer_id]',
-          value: 'Cancel an active timer using its ID',
-          inline: false
-        },
-        {
-          name: '/help',
-          value: 'Show this help message (you\'re here!)',
-          inline: false
-        },
-        {
-          name: '/thread',
-          value: 'Create a private AI conversation thread',
           inline: false
         }
       )

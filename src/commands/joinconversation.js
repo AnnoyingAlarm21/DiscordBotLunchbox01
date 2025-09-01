@@ -3,78 +3,69 @@ const { SlashCommandBuilder } = require('discord.js');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('joinconversation')
-    .setDescription('Join another user\'s conversation with Lunchbox AI')
+    .setDescription('Join another user\'s conversation with Lunchbox AI - perfect for group discussions and collaboration!')
     .addUserOption(option =>
       option.setName('user')
-        .setDescription('The user whose conversation you want to join')
+        .setDescription('Which user\'s conversation do you want to join?')
         .setRequired(true)
     ),
 
   async execute(interaction, client) {
-    const targetUserId = interaction.options.getUser('user').id;
+    const targetUser = interaction.options.getUser('user');
+    const targetUserId = targetUser.id;
     const currentUserId = interaction.user.id;
     
-    // Check if target user is in a conversation
+    // Check if target user is in conversation
     if (!client.activeConversations.has(targetUserId)) {
       await interaction.reply({
-        content: `❌ **${interaction.options.getUser('user').username}** is not currently in a conversation with me. They need to use \`/conversate\` first!`,
+        content: `🍱 **${targetUser.username}** is not currently in a conversation with me. Ask them to use \`/conversate\` first!`,
         ephemeral: true
       });
       return;
     }
     
-    // Check if current user is already in a conversation
+    // Check if current user is already in conversation
     if (client.activeConversations.has(currentUserId)) {
       await interaction.reply({
-        content: '❌ You\'re already in a conversation! Use `/endconversation` to stop your current conversation first.',
+        content: '🍱 You\'re already in a conversation! Use `/endconversation` to stop your current conversation first.',
         ephemeral: true
       });
       return;
     }
     
-    // Check if target user is in a private thread
-    const isInPrivateThread = interaction.channel.isThread() && 
-                             interaction.channel.ownerId === targetUserId &&
-                             client.privateThreads?.has(interaction.channel.id);
-    
-    if (isInPrivateThread) {
-      await interaction.reply({
-        content: '❌ You cannot join a private thread conversation. Private threads are exclusive to the thread owner.',
-        ephemeral: true
-      });
-      return;
-    }
-    
-    // Add current user to conversation
+    // Join the conversation
     client.activeConversations.add(currentUserId);
     
-    // Get conversation context from target user
-    const targetUserContext = client.conversationContext.get(targetUserId);
-    const conversationStart = targetUserContext?.conversationStart || new Date();
-    const conversationAge = Math.floor((new Date() - conversationStart) / (1000 * 60)); // minutes
+    // Get or create conversation context for the group
+    if (!client.groupConversations) {
+      client.groupConversations = new Map();
+    }
     
-    // Create welcome message
-    const welcomeMessage = `🍱 **Conversation joined!** You've joined **${interaction.options.getUser('user').username}**'s conversation!\n\n` +
-                          `⏰ **Conversation started:** ${conversationAge} minute${conversationAge !== 1 ? 's' : ''} ago\n` +
-                          `💬 **Chat naturally** - I'll respond to both of you!\n` +
-                          `👥 **Group conversation** - perfect for collaboration!\n\n` +
-                          `Use \`/endconversation\` when you want to leave.`;
+    const groupId = `group_${targetUserId}`;
+    if (!client.groupConversations.has(groupId)) {
+      client.groupConversations.set(groupId, {
+        participants: [targetUserId],
+        startTime: new Date(),
+        topic: 'Group collaboration'
+      });
+    }
     
+    const groupData = client.groupConversations.get(groupId);
+    groupData.participants.push(currentUserId);
+    
+    // Notify both users
     await interaction.reply({
-      content: welcomeMessage,
+      content: `🍱 **${interaction.user.username}** has joined **${targetUser.username}**'s conversation!\n\nNow you can collaborate together with Lunchbox AI. Both of you can chat naturally and I'll help you both with tasks and productivity!`,
       ephemeral: false
     });
     
-    // Notify the target user
+    // Also notify the target user
     try {
-      await interaction.channel.send({
-        content: `👋 **${interaction.user.username}** has joined your conversation! Now it's a group chat! 🎉`,
-        ephemeral: false
-      });
+      await targetUser.send(`🍱 **${interaction.user.username}** has joined your conversation! You can now collaborate together with Lunchbox AI.`);
     } catch (error) {
-      console.error('Could not send notification to target user:', error);
+      console.log(`Could not DM ${targetUser.username} about conversation join`);
     }
     
-    console.log(`👥 User ${interaction.user.tag} (${currentUserId}) joined conversation of ${interaction.options.getUser('user').tag} (${targetUserId})`);
+    console.log(`👥 User ${interaction.user.tag} joined ${targetUser.tag}'s conversation`);
   }
 };

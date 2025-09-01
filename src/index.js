@@ -240,30 +240,6 @@ client.on('messageCreate', async message => {
   console.log(`🔍 Processing message: "${messageContent}"`);
   console.log(`🔍 Is mention: ${isMentioned}, Is prefixed: ${isPrefixed}`);
   
-  // Check for explicit task creation requests
-  if (messageContent.toLowerCase().startsWith('create task:') || 
-      messageContent.toLowerCase().startsWith('add task:') ||
-      messageContent.toLowerCase().startsWith('make task:') ||
-      messageContent.toLowerCase().includes('create it as a task') ||
-      messageContent.toLowerCase().includes('add it as a task') ||
-      messageContent.toLowerCase().includes('make it a task') ||
-      messageContent.toLowerCase().includes('create that as a task') ||
-      messageContent.toLowerCase().includes('add that as a task')) {
-    console.log(`🎯 EXPLICIT TASK REQUEST: "${messageContent}"`);
-    
-    // Extract the task text after the colon, or use the full message
-    let taskText = messageContent;
-    if (messageContent.includes(':')) {
-      taskText = messageContent.split(':')[1]?.trim();
-    }
-    
-    if (taskText) {
-      console.log(`🎯 Processing explicit task: "${taskText}"`);
-      await processTaskFromConversation(message, taskText, client);
-      return;
-    }
-  }
-  
   // Check if this is a response to a pending task question
   if (client.pendingTasks && client.pendingTasks.has(message.author.id)) {
     console.log(`✅ Found pending task for user ${message.author.username}`);
@@ -399,20 +375,7 @@ client.on('messageCreate', async message => {
     }
   }
   
-  // Check if user is in conversation mode and has pending tasks
-  const hasPendingTask = client.pendingTasks && client.pendingTasks.has(message.author.id);
-  
-  // Priority: Handle pending tasks first, then detect new tasks, then AI conversation
-  if (hasPendingTask) {
-    console.log(`🎯 User has pending task, processing response to existing task`);
-    // This will be handled by the pending task logic above
-    return;
-  }
-  
-  // For users in conversation mode, use AI conversation handler (PRIORITY)
-  console.log(`💬 Going to AI conversation handler for: "${messageContent}"`);
-  
-  // NEW: Use the smart task detection from conversation (CORE LUNCHBOX FEATURE!)
+  // NEW: Smart task detection from conversation (the core feature!)
   const taskKeywords = [
     'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
     'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
@@ -424,62 +387,82 @@ client.on('messageCreate', async message => {
     'therapy', 'consultation', 'follow-up', 'surgery', 'treatment',
     'deliverables', 'coordination', 'work timings', 'timeline', 'requirements',
     'deadlines', 'milestones', 'goals', 'objectives', 'targets', 'priorities',
-    'tasks', 'assignments', 'responsibilities', 'duties', 'chores', 'errands',
-    // NEW: Add more natural task indicators
-    'test', 'exam', 'quiz', 'presentation', 'report', 'paper', 'essay',
-    'assignment', 'project', 'meeting', 'call', 'appointment', 'interview',
-    'deadline', 'due', 'finish', 'complete', 'submit', 'turn in', 'hand in'
+    'tasks', 'assignments', 'responsibilities', 'duties', 'chores', 'errands'
   ];
   
   const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
   
-  // Check if this is likely a task (not just casual conversation)
-  const taskIndicators = [
-    'i need to', 'i have to', 'i should', 'i must', 'i want to', 'i plan to', 'i am going to',
-    'i need to do', 'i have to do', 'i should do', 'i must do', 'i want to do',
-    'i need to finish', 'i have to finish', 'i should finish',
-    'i need to complete', 'i have to complete', 'i should complete',
-    'i need to work on', 'i have to work on', 'i should work on',
-    'i need to study', 'i have to study', 'i should study',
-    'i need to clean', 'i have to clean', 'i should clean',
-    'i need to buy', 'i have to buy', 'i should buy',
-    'i need to call', 'i have to call', 'i should call',
-    'i need to email', 'i have to email', 'i should email',
-    'i need to schedule', 'i have to schedule', 'i should schedule',
-    'i need to organize', 'i have to organize', 'i should organize',
-    // NEW: Add "i have" for cases like "i have homework"
-    'i have', 'i got', 'i got to', 'gotta',
-    // NEW: Add more natural patterns
-    'i have a', 'i got a', 'i need a', 'i want a',
-    'i have an', 'i got an', 'i need an', 'i want an',
-    'i have some', 'i got some', 'i need some', 'i want some'
-  ];
+  // Check if this is likely additional context rather than a new task
+  const contextIndicators = ['but', 'however', 'also', 'additionally', 'plus', 'for', 'at', 'on', 'in', 'when', 'where', 'how', 'because', 'since', 'while'];
+  const isLikelyContext = contextIndicators.some(indicator => messageContent.includes(indicator));
   
-  const isLikelyTask = taskIndicators.some(indicator => messageContent.toLowerCase().includes(indicator));
+  // Check if user is in conversation mode and has pending tasks
+  const hasPendingTask = client.pendingTasks && client.pendingTasks.has(message.author.id);
   
-  // DEBUG: Log what we found
-  console.log(`🔍 DEBUG: Message: "${messageContent}"`);
-  console.log(`🔍 DEBUG: Has task keywords: ${hasTaskKeywords}`);
-  console.log(`🔍 DEBUG: Is likely task: ${isLikelyTask}`);
-  if (hasTaskKeywords) {
-    const foundKeywords = taskKeywords.filter(keyword => messageContent.includes(keyword));
-    console.log(`🔍 DEBUG: Found keywords: ${foundKeywords.join(', ')}`);
-  }
-  if (isLikelyTask) {
-    const foundIndicators = taskIndicators.filter(indicator => messageContent.toLowerCase().includes(indicator));
-    console.log(`🔍 DEBUG: Found indicators: ${foundIndicators.join(', ')}`);
-  }
-  
-  // If it looks like a task, suggest creating it (CORE LUNCHBOX FEATURE!)
-  if (hasTaskKeywords && isLikelyTask) {
-    console.log(`🎯 LUNCHBOX CORE: Detected potential task from conversation: "${messageContent}"`);
-    
-    // Process as task suggestion
-    await processTaskFromConversation(message, messageContent, client);
+  // Priority: Handle pending tasks first, then detect new tasks, then AI conversation
+  if (hasPendingTask) {
+    console.log(`🎯 User has pending task, processing response to existing task`);
+    // This will be handled by the pending task logic above
     return;
   }
   
-  // If not a task, use AI conversation
+  // NEW: Smart task detection - only suggest tasks when it makes sense
+  if (hasTaskKeywords && !isLikelyContext) {
+    console.log(`🎯 Task detected from conversation: "${message.content}"`);
+    
+    // Process the task text to clean it up
+    const processedTask = taskProcessor.cleanTaskText(message.content);
+    const cleanTaskText = processedTask.cleanText;
+    const hasDeadline = processedTask.deadline !== null;
+    
+    console.log(`🧹 Cleaned task text: "${cleanTaskText}"`);
+    console.log(`⏰ Has deadline: ${hasDeadline}`);
+    if (hasDeadline) {
+      console.log(`📅 Deadline: ${processedTask.deadline.fullDate.toLocaleString()}`);
+    }
+    
+    // Create a better task suggestion - use the CLEANED text, not raw message
+    let suggestionText = `🍱 That sounds like something for your lunchbox! Would you like me to add **"${cleanTaskText}"** as a task?`;
+    
+    if (hasDeadline) {
+      const deadline = processedTask.deadline;
+      suggestionText += `\n\n⏰ **Deadline detected:** ${deadline.fullDate.toLocaleString()}`;
+      suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
+    }
+    
+    suggestionText += `\n\n💬 **To start chatting naturally with me, use \`/conversate\`**`;
+    
+    console.log(`💬 Sending task suggestion: "${suggestionText}"`);
+    await message.reply(suggestionText);
+    
+    // Store the processed task for this user - store the CLEANED text
+    if (!client.pendingTasks) client.pendingTasks = new Map();
+    client.pendingTasks.set(message.author.id, {
+      originalText: message.content,
+      cleanText: cleanTaskText,  // This is the cleaned version
+      deadline: processedTask.deadline
+    });
+    
+    console.log(`💾 Stored pending task for user ${message.author.username}:`, JSON.stringify(client.pendingTasks.get(message.author.id), null, 2));
+    
+    // Also store in conversation context for AI to remember
+    if (!client.conversationContext.has(message.author.id)) {
+      client.conversationContext.set(message.author.id, {
+        messages: [],
+        lastTaskContext: null,
+        userPreferences: {},
+        conversationStart: new Date()
+      });
+    }
+    const userContext = client.conversationContext.get(message.author.id);
+    userContext.lastTaskContext = cleanTaskText;
+    
+    console.log(`🧠 Updated conversation context for user ${message.author.username}`);
+    return;
+  }
+  
+  // For users in conversation mode, use AI conversation handler (PRIORITY)
+  console.log(`💬 Going to AI conversation handler for: "${messageContent}"`);
   await handleAIConversation(message, messageContent, client);
 });
 
@@ -644,49 +627,8 @@ async function handleRegularConversation(message, messageContent) {
 async function handleAIConversation(message, messageContent, client) {
   console.log(`🤖 AI conversation handler called with: "${messageContent}"`);
   
-  // NEW: Smart task detection from conversation - this is the CORE feature!
-  const taskKeywords = [
-    'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
-    'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
-    'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
-    'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice',
-    'schedule', 'due', 'get done', 'finish', 'complete', 'submit', 'turn in',
-    'remind', 'set reminder', 'calendar', 'plan', 'organize', 'arrange',
-    'doctor', 'dentist', 'medical', 'checkup', 'exam', 'test', 'procedure',
-    'therapy', 'consultation', 'follow-up', 'surgery', 'treatment',
-    'deliverables', 'coordination', 'work timings', 'timeline', 'requirements',
-    'deadlines', 'milestones', 'goals', 'objectives', 'targets', 'priorities',
-    'tasks', 'assignments', 'responsibilities', 'duties', 'chores', 'errands'
-  ];
-  
-  const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
-  
-  // Check if this is likely a task (not just casual conversation)
-  const taskIndicators = [
-    'i need to', 'i have to', 'i should', 'i must', 'i want to', 'i plan to', 'i am going to',
-    'i need to do', 'i have to do', 'i should do', 'i must do', 'i want to do',
-    'i need to finish', 'i have to finish', 'i should finish',
-    'i need to complete', 'i have to complete', 'i should complete',
-    'i need to work on', 'i have to work on', 'i should work on',
-    'i need to study', 'i have to study', 'i should study',
-    'i need to clean', 'i have to clean', 'i should clean',
-    'i need to buy', 'i have to buy', 'i should buy',
-    'i need to call', 'i have to call', 'i should call',
-    'i need to email', 'i have to email', 'i should email',
-    'i need to schedule', 'i have to schedule', 'i should schedule',
-    'i need to organize', 'i have to organize', 'i should organize'
-  ];
-  
-  const isLikelyTask = taskIndicators.some(indicator => messageContent.toLowerCase().includes(indicator));
-  
-  // If it looks like a task, suggest creating it (CORE LUNCHBOX FEATURE!)
-  if (hasTaskKeywords && isLikelyTask) {
-    console.log(`🎯 LUNCHBOX CORE: Detected potential task from conversation: "${messageContent}"`);
-    
-    // Process as task suggestion
-    await processTaskFromConversation(message, messageContent, client);
-    return;
-  }
+  // REMOVED: Aggressive task detection - let users chat naturally!
+  // Only redirect to tasks if they explicitly ask for task creation
   
   try {
     // Use Groq for intelligent conversation (ONLY for non-task topics)
@@ -749,7 +691,7 @@ REMEMBER: Teens have short attention spans - keep it brief and fun!`;
     
     const completion = await groq.chat.completions.create({
       messages: messages,
-      model: "llama-3.1-8b-instant",  // FIXED: Use updated model
+      model: "llama3-8b-8192",
       temperature: 0.7,
       max_tokens: 150,  // REDUCED: Shorter responses for teens
     });
