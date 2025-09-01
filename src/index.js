@@ -240,6 +240,21 @@ client.on('messageCreate', async message => {
   console.log(`🔍 Processing message: "${messageContent}"`);
   console.log(`🔍 Is mention: ${isMentioned}, Is prefixed: ${isPrefixed}`);
   
+  // Check for explicit task creation requests
+  if (messageContent.toLowerCase().startsWith('create task:') || 
+      messageContent.toLowerCase().startsWith('add task:') ||
+      messageContent.toLowerCase().startsWith('make task:')) {
+    console.log(`🎯 EXPLICIT TASK REQUEST: "${messageContent}"`);
+    
+    // Extract the task text after the colon
+    const taskText = messageContent.split(':')[1]?.trim();
+    if (taskText) {
+      console.log(`🎯 Processing explicit task: "${taskText}"`);
+      await processTaskFromConversation(message, taskText, client);
+      return;
+    }
+  }
+  
   // Check if this is a response to a pending task question
   if (client.pendingTasks && client.pendingTasks.has(message.author.id)) {
     console.log(`✅ Found pending task for user ${message.author.username}`);
