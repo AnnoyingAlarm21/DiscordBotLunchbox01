@@ -245,6 +245,28 @@ client.on('messageCreate', async message => {
   const context = isInPrivateThread ? 'private thread' : 'conversation mode';
   console.log(`💬 Processing ${context} message from ${message.author.username}: "${message.content}"`);
   
+  // Store message in conversation history
+  if (!client.conversationHistory) {
+    client.conversationHistory = new Map();
+  }
+  
+  if (!client.conversationHistory.has(message.author.id)) {
+    client.conversationHistory.set(message.author.id, []);
+  }
+  
+  const userHistory = client.conversationHistory.get(message.author.id);
+  userHistory.push({
+    timestamp: new Date(),
+    author: message.author.username,
+    content: message.content,
+    type: 'user'
+  });
+  
+  // Keep only last 50 messages per user to prevent memory issues
+  if (userHistory.length > 50) {
+    userHistory.splice(0, userHistory.length - 50);
+  }
+  
   // Handle regular conversation - this is the key feature!
   const messageContent = message.content.toLowerCase().trim();
   
@@ -649,90 +671,100 @@ async function handleRegularConversation(message, messageContent) {
 async function handleAIConversation(message, messageContent, client) {
   console.log(`🤖 AI conversation handler called with: "${messageContent}"`);
   
-  // REMOVED: Aggressive task detection - let users chat naturally!
-  // Only redirect to tasks if they explicitly ask for task creation
+  // Get user's conversation context
+  if (!client.conversationContext.has(message.author.id)) {
+    client.conversationContext.set(message.author.id, {
+      messages: [],
+      lastTaskContext: null,
+      userPreferences: {},
+      conversationStart: new Date()
+    });
+  }
+  
+  const userContext = client.conversationContext.get(message.author.id);
+  
+  // Add user message to context
+  userContext.messages.push({
+    role: 'user',
+    content: messageContent
+  });
+  
+  // Keep only last 10 messages for context (to avoid token limits)
+  if (userContext.messages.length > 10) {
+    userContext.messages = userContext.messages.slice(-10);
+  }
   
   try {
-    // Use Groq for intelligent conversation (ONLY for non-task topics)
     const Groq = require('groq-sdk');
     const groq = new Groq({
       apiKey: process.env.GROQ_API_KEY,
     });
     
-    // Get or create conversation context for this user
-    const userId = message.author.id;
-    if (!client.conversationContext.has(userId)) {
-      client.conversationContext.set(userId, {
-        messages: [],
-        lastTaskContext: null,
-        userPreferences: {},
-        conversationStart: new Date()
-      });
-    }
+    const systemPrompt = `You are Lunchbox, a friendly AI assistant that helps teens organize their tasks and have casual conversations. You're helpful, encouraging, and speak like a supportive friend. Keep responses short and engaging (under 150 characters). Don't mention tasks or productivity unless the user specifically asks. Just be a good conversation partner!`;
     
-    const userContext = client.conversationContext.get(userId);
-    
-    // Add current message to context
-    userContext.messages.push({
-      role: "user",
-      content: messageContent,
-      timestamp: new Date()
-    });
-    
-    // Keep only last 10 messages to avoid token limits
-    if (userContext.messages && userContext.messages.length > 10) {
-      userContext.messages = userContext.messages.slice(-10);
-    }
-    
-    // Create context-aware prompt that focuses on conversation, not tasks
-    let systemPrompt = `You are Lunchbox, a friendly and helpful AI companion. You're great at general conversation, helping with advice, and being a good chat buddy.
-
-CONVERSATION FOCUS:
-- Be helpful, friendly, and engaging
-- Keep responses SHORT and punchy (max 100 words)
-- Ask ONE follow-up question max
-- Be supportive and encouraging
-- If someone mentions they need help with something, offer to help them figure it out
-- Only mention task creation if they explicitly ask for it
-
-REMEMBER: Teens have short attention spans - keep it brief and fun!`;
-
-    // Build conversation history for context
-    const conversationHistory = (userContext.messages || []).slice(-5).map(msg => ({
-      role: msg.role,
-      content: msg.content
-    }));
-    
-    // Add system message
     const messages = [
-      { role: "system", content: systemPrompt },
-      ...conversationHistory
+      { role: 'system', content: systemPrompt },
+      ...userContext.messages
     ];
     
     console.log(`🤖 Sending to Groq with ${messages.length} messages for context (non-task conversation)`);
     
     const completion = await groq.chat.completions.create({
       messages: messages,
-              model: "llama-3.1-8b-8192",
+      model: "llama-3.1-8b-8192",
       temperature: 0.7,
       max_tokens: 150,  // REDUCED: Shorter responses for teens
     });
-
-    const aiResponse = completion.choices[0]?.message?.content || "🍱 That's interesting! I'm here to chat about anything non-productivity related. What's on your mind?";
     
-    // Add AI response to context
+    const botResponse = completion.choices[0]?.message?.content || "I'm here to chat! What's on your mind?";
+    
+    // Store bot response in conversation history
+    if (client.conversationHistory && client.conversationHistory.has(message.author.id)) {
+      const userHistory = client.conversationHistory.get(message.author.id);
+      userHistory.push({
+        timestamp: new Date(),
+        author: 'Lunchbox AI',
+        content: botResponse,
+        type: 'bot'
+      });
+      
+      // Keep only last 50 messages per user
+      if (userHistory.length > 50) {
+        userHistory.splice(0, userHistory.length - 50);
+      }
+    }
+    
+    // Add bot response to context
     userContext.messages.push({
-      role: "assistant",
-      content: aiResponse,
-      timestamp: new Date()
+      role: 'assistant',
+      content: botResponse
     });
     
-    await message.reply(aiResponse);
+    // Keep only last 10 messages for context
+    if (userContext.messages.length > 10) {
+      userContext.messages = userContext.messages.slice(-10);
+    }
+    
+    await message.reply(botResponse);
     
   } catch (error) {
     console.error('Error with AI conversation:', error);
-    // Fallback to regular conversation if AI fails
-    await handleRegularConversation(message, messageContent);
+    
+    // Fallback response
+    const fallbackResponse = "Hey! I'm here to chat and help you organize your tasks. What's up?";
+    
+    // Store fallback response in conversation history
+    if (client.conversationHistory && client.conversationHistory.has(message.author.id)) {
+      const userHistory = client.conversationHistory.get(message.author.id);
+      userHistory.push({
+        timestamp: new Date(),
+        author: 'Lunchbox AI',
+        content: fallbackResponse,
+        type: 'bot'
+      });
+    }
+    
+    await message.reply(fallbackResponse);
   }
 }
 

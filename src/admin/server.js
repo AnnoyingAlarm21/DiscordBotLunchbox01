@@ -72,6 +72,35 @@ adminApp.get('/api/users/:userId', (req, res) => {
   }
 });
 
+// API endpoint to get conversation history for a specific user
+adminApp.get('/api/conversations/:userId', (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const botData = global.botClient ? {
+      activeConversations: Array.from(global.botClient.activeConversations || []),
+      privateThreads: Array.from(global.botClient.privateThreads || []),
+      groupConversations: Array.from(global.botClient.groupConversations || []),
+      pendingTasks: Array.from(global.botClient.pendingTasks || []),
+      conversationContext: Array.from(global.botClient.conversationContext || []),
+      conversationHistory: global.botClient.conversationHistory ? 
+        Object.fromEntries(global.botClient.conversationHistory) : {}
+    } : {};
+    
+    const userHistory = botData.conversationHistory[userId] || [];
+    
+    res.json({
+      userId: userId,
+      isActive: botData.activeConversations.includes(userId),
+      history: userHistory,
+      totalMessages: userHistory.length,
+      lastMessage: userHistory.length > 0 ? userHistory[userHistory.length - 1] : null
+    });
+  } catch (error) {
+    console.error('Error fetching conversation history:', error);
+    res.status(500).json({ error: 'Failed to fetch conversation history' });
+  }
+});
+
 // Start admin dashboard server
 function startAdminDashboard() {
   adminApp.listen(adminPort, () => {

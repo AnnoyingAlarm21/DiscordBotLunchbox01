@@ -232,6 +232,63 @@
             outline: none;
             border-color: #667eea;
         }
+        
+        .messages-container {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        
+        .user-message {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .bot-message {
+            background: white;
+            color: #333;
+            border: 1px solid #e9ecef;
+        }
+        
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+        
+        .message-author {
+            font-weight: bold;
+        }
+        
+        .message-time {
+            font-size: 0.7rem;
+        }
+        
+        .message-content {
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+        
+        .conversation-history {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e9ecef;
+        }
     </style>
 </head>
 <body>
@@ -398,10 +455,64 @@
             
             let html = '<h3>Active Conversations</h3>';
             conversations.forEach(userId => {
-                html += `<div class="user-card"><div class="user-id">User ID: ${userId}</div></div>`;
+                html += `
+                    <div class="user-card">
+                        <div class="user-header">
+                            <div class="user-id">User ID: ${userId}</div>
+                            <button class="refresh-btn" onclick="viewConversation('${userId}')">View Messages</button>
+                        </div>
+                        <div id="conversation-${userId}" class="conversation-history" style="display: none;">
+                            <div class="loading">Loading conversation...</div>
+                        </div>
+                    </div>
+                `;
             });
             
             conversationsList.innerHTML = html;
+        }
+        
+        async function viewConversation(userId) {
+            const conversationDiv = document.getElementById(`conversation-${userId}`);
+            const button = event.target;
+            
+            if (conversationDiv.style.display === 'none') {
+                // Show conversation
+                conversationDiv.style.display = 'block';
+                button.textContent = 'Hide Messages';
+                
+                try {
+                    const response = await fetch(`/api/conversations/${userId}`);
+                    const data = await response.json();
+                    
+                    if (data.history && data.history.length > 0) {
+                        let messagesHtml = '<div class="messages-container">';
+                        data.history.forEach(message => {
+                            const isBot = message.type === 'bot';
+                            const time = new Date(message.timestamp).toLocaleTimeString();
+                            messagesHtml += `
+                                <div class="message ${isBot ? 'bot-message' : 'user-message'}">
+                                    <div class="message-header">
+                                        <span class="message-author">${message.author}</span>
+                                        <span class="message-time">${time}</span>
+                                    </div>
+                                    <div class="message-content">${message.content}</div>
+                                </div>
+                            `;
+                        });
+                        messagesHtml += '</div>';
+                        conversationDiv.innerHTML = messagesHtml;
+                    } else {
+                        conversationDiv.innerHTML = '<div class="loading">No messages found</div>';
+                    }
+                } catch (error) {
+                    console.error('Error loading conversation:', error);
+                    conversationDiv.innerHTML = '<div class="error">Failed to load conversation</div>';
+                }
+            } else {
+                // Hide conversation
+                conversationDiv.style.display = 'none';
+                button.textContent = 'View Messages';
+            }
         }
         
         function displayThreads() {
