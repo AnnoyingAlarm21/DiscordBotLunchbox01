@@ -235,14 +235,23 @@ client.on('messageCreate', async message => {
                            message.channel.ownerId === message.author.id &&
                            client.privateThreads?.has(message.channel.id);
   
-  if (!client.activeConversations.has(message.author.id) && !isInPrivateThread) {
+  // Check if user is in conversation mode
+  const isInConversationMode = client.activeConversations.has(message.author.id);
+  
+  // Only process if user is in conversation mode OR in a private thread, but not both
+  if (!isInConversationMode && !isInPrivateThread) {
     // User is not in conversation mode and not in a private thread - don't respond
     console.log(`🔇 User ${message.author.username} is not in conversation mode or private thread - ignoring message`);
     return;
   }
   
+  // Prevent duplicate processing - if user is in both, prioritize conversation mode
+  if (isInConversationMode && isInPrivateThread) {
+    console.log(`🔇 User ${message.author.username} is in both conversation mode and private thread - using conversation mode only`);
+  }
+  
   // User is in conversation mode OR in private thread - process their message
-  const context = isInPrivateThread ? 'private thread' : 'conversation mode';
+  const context = isInConversationMode ? 'conversation mode' : 'private thread';
   console.log(`💬 Processing ${context} message from ${message.author.username}: "${message.content}"`);
   
   // Store message in conversation history
@@ -711,7 +720,7 @@ async function handleAIConversation(message, messageContent, client) {
     
     const completion = await groq.chat.completions.create({
       messages: messages,
-      model: "llama-3.1-8b-8192",
+      model: "mixtral-8x7b-32768",
       temperature: 0.7,
       max_tokens: 150,  // REDUCED: Shorter responses for teens
     });

@@ -5,14 +5,20 @@ module.exports = {
     .setName('completetask')
     .setDescription('Mark a task as completed')
     .addStringOption(option =>
-      option.setName('task_id')
-        .setDescription('The ID of the task to complete (use /lunchbox to see IDs)')
+      option.setName('taskname')
+        .setDescription('The name/content of the task to complete')
         .setRequired(true)
+    )
+    .addStringOption(option =>
+      option.setName('note')
+        .setDescription('Optional note about the completion (e.g., "Finished early!", "Took longer than expected")')
+        .setRequired(false)
     ),
 
   async execute(interaction, client) {
     const userId = interaction.user.id;
-    const taskId = parseInt(interaction.options.getString('task_id'));
+    const taskName = interaction.options.getString('taskname');
+    const note = interaction.options.getString('note');
     
     // Check if user has any tasks
     if (!client.userTasks.has(userId) || client.userTasks.get(userId).tasks.length === 0) {
@@ -24,11 +30,19 @@ module.exports = {
     }
     
     const userData = client.userTasks.get(userId);
-    const taskIndex = userData.tasks.findIndex(task => task.id === taskId);
+    const taskIndex = userData.tasks.findIndex(task => 
+      task.content.toLowerCase().includes(taskName.toLowerCase())
+    );
     
     if (taskIndex === -1) {
+      // Show available tasks to help user
+      const availableTasks = userData.tasks
+        .filter(task => !task.completed)
+        .map(task => `• ${task.content}`)
+        .join('\n');
+      
       await interaction.reply({
-        content: '🍱 Task not found! Use `/lunchbox` to see your tasks and their IDs.',
+        content: `🍱 Task not found! Here are your available tasks:\n\n${availableTasks}\n\nTry using the exact task name or a part of it.`,
         ephemeral: true
       });
       return;
@@ -47,6 +61,7 @@ module.exports = {
     // Mark task as completed
     task.completed = true;
     task.completedAt = new Date();
+    task.completionNote = note; // Store the completion note
     
     // Create celebration embed
     const embed = new EmbedBuilder()
@@ -61,6 +76,15 @@ module.exports = {
       .setFooter({ text: 'Great job! Your lunchbox is getting lighter! 🥪' })
       .setTimestamp();
     
+    // Add completion note if provided
+    if (note) {
+      embed.addFields({
+        name: '📝 Note',
+        value: note,
+        inline: false
+      });
+    }
+    
     // Add motivational message based on category
     const motivationalMessage = getMotivationalMessage(task.category);
     if (motivationalMessage) {
@@ -72,6 +96,10 @@ module.exports = {
     }
     
     await interaction.reply({ embeds: [embed] });
+    
+    // Save tasks to storage
+    const taskStorage = require('../utils/taskStorage');
+    taskStorage.saveTasks(client.userTasks);
     
     // Try to announce completion in voice if bot is in a voice channel
     try {
