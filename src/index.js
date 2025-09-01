@@ -264,6 +264,19 @@ client.on('messageCreate', async message => {
   }
   
   const userHistory = client.conversationHistory.get(message.author.id);
+  
+  // Check for duplicate messages (prevent processing the same message twice)
+  const lastMessage = userHistory.length > 0 ? userHistory[userHistory.length - 1] : null;
+  const isDuplicate = lastMessage && 
+                     lastMessage.content === message.content && 
+                     lastMessage.author === message.author.username &&
+                     (new Date() - lastMessage.timestamp) < 5000; // Within 5 seconds
+  
+  if (isDuplicate) {
+    console.log(`🔇 Duplicate message detected, ignoring: "${message.content}"`);
+    return;
+  }
+  
   userHistory.push({
     timestamp: new Date(),
     author: message.author.username,
@@ -720,7 +733,7 @@ async function handleAIConversation(message, messageContent, client) {
     
     const completion = await groq.chat.completions.create({
       messages: messages,
-      model: "mixtral-8x7b-32768",
+      model: "llama-3.1-8b-8192",
       temperature: 0.7,
       max_tokens: 150,  // REDUCED: Shorter responses for teens
     });
@@ -730,16 +743,26 @@ async function handleAIConversation(message, messageContent, client) {
     // Store bot response in conversation history
     if (client.conversationHistory && client.conversationHistory.has(message.author.id)) {
       const userHistory = client.conversationHistory.get(message.author.id);
-      userHistory.push({
-        timestamp: new Date(),
-        author: 'Lunchbox AI',
-        content: botResponse,
-        type: 'bot'
-      });
       
-      // Keep only last 50 messages per user
-      if (userHistory.length > 50) {
-        userHistory.splice(0, userHistory.length - 50);
+      // Check for duplicate bot responses
+      const lastBotMessage = userHistory.length > 0 ? userHistory[userHistory.length - 1] : null;
+      const isDuplicateBotResponse = lastBotMessage && 
+                                    lastBotMessage.content === botResponse && 
+                                    lastBotMessage.author === 'Lunchbox AI' &&
+                                    (new Date() - lastBotMessage.timestamp) < 5000;
+      
+      if (!isDuplicateBotResponse) {
+        userHistory.push({
+          timestamp: new Date(),
+          author: 'Lunchbox AI',
+          content: botResponse,
+          type: 'bot'
+        });
+        
+        // Keep only last 50 messages per user
+        if (userHistory.length > 50) {
+          userHistory.splice(0, userHistory.length - 50);
+        }
       }
     }
     
@@ -765,12 +788,22 @@ async function handleAIConversation(message, messageContent, client) {
     // Store fallback response in conversation history
     if (client.conversationHistory && client.conversationHistory.has(message.author.id)) {
       const userHistory = client.conversationHistory.get(message.author.id);
-      userHistory.push({
-        timestamp: new Date(),
-        author: 'Lunchbox AI',
-        content: fallbackResponse,
-        type: 'bot'
-      });
+      
+      // Check for duplicate fallback responses
+      const lastBotMessage = userHistory.length > 0 ? userHistory[userHistory.length - 1] : null;
+      const isDuplicateFallback = lastBotMessage && 
+                                 lastBotMessage.content === fallbackResponse && 
+                                 lastBotMessage.author === 'Lunchbox AI' &&
+                                 (new Date() - lastBotMessage.timestamp) < 5000;
+      
+      if (!isDuplicateFallback) {
+        userHistory.push({
+          timestamp: new Date(),
+          author: 'Lunchbox AI',
+          content: fallbackResponse,
+          type: 'bot'
+        });
+      }
     }
     
     await message.reply(fallbackResponse);
