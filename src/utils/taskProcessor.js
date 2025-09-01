@@ -175,9 +175,12 @@ const taskProcessor = {
       } else if (item.toLowerCase().includes('homework')) {
         cleanedText = `Complete ${item}`;
         console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
-      } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment')) {
-        cleanedText = `Prepare for ${item}`;
-        console.log(`🔍 SmartTask: Generated "Prepare for ${item}"`);
+      } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment') || item.toLowerCase().includes('meetup')) {
+        cleanedText = `Attend ${item}`;
+        console.log(`🔍 SmartTask: Generated "Attend ${item}"`);
+      } else if (item.toLowerCase().includes('project') || item.toLowerCase().includes('assignment')) {
+        cleanedText = `Work on ${item}`;
+        console.log(`🔍 SmartTask: Generated "Work on ${item}"`);
       } else {
         cleanedText = `Complete ${item}`;
         console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
@@ -196,9 +199,12 @@ const taskProcessor = {
       } else if (item.toLowerCase().includes('homework')) {
         cleanedText = `Complete ${item}`;
         console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
-      } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment')) {
-        cleanedText = `Prepare for ${item}`;
-        console.log(`🔍 SmartTask: Generated "Prepare for ${item}"`);
+      } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment') || item.toLowerCase().includes('meetup')) {
+        cleanedText = `Attend ${item}`;
+        console.log(`🔍 SmartTask: Generated "Attend ${item}"`);
+      } else if (item.toLowerCase().includes('project') || item.toLowerCase().includes('assignment')) {
+        cleanedText = `Work on ${item}`;
+        console.log(`🔍 SmartTask: Generated "Work on ${item}"`);
       } else {
         cleanedText = `Complete ${item}`;
         console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
@@ -217,9 +223,12 @@ const taskProcessor = {
       } else if (item.toLowerCase().includes('homework')) {
         cleanedText = `Complete ${item}`;
         console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
-      } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment')) {
-        cleanedText = `Prepare for ${item}`;
-        console.log(`🔍 SmartTask: Generated "Prepare for ${item}"`);
+      } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment') || item.toLowerCase().includes('meetup')) {
+        cleanedText = `Attend ${item}`;
+        console.log(`🔍 SmartTask: Generated "Attend ${item}"`);
+      } else if (item.toLowerCase().includes('project') || item.toLowerCase().includes('assignment')) {
+        cleanedText = `Work on ${item}`;
+        console.log(`🔍 SmartTask: Generated "Work on ${item}"`);
       } else {
         cleanedText = `Complete ${item}`;
         console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
@@ -238,9 +247,12 @@ const taskProcessor = {
       } else if (item.toLowerCase().includes('homework')) {
         cleanedText = `Complete ${item}`;
         console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
-      } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment')) {
-        cleanedText = `Prepare for ${item}`;
-        console.log(`🔍 SmartTask: Generated "Prepare for ${item}"`);
+      } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment') || item.toLowerCase().includes('meetup')) {
+        cleanedText = `Attend ${item}`;
+        console.log(`🔍 SmartTask: Generated "Attend ${item}"`);
+      } else if (item.toLowerCase().includes('project') || item.toLowerCase().includes('assignment')) {
+        cleanedText = `Work on ${item}`;
+        console.log(`🔍 SmartTask: Generated "Work on ${item}"`);
       } else {
         cleanedText = `Complete ${item}`;
         console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
@@ -248,7 +260,7 @@ const taskProcessor = {
     }
     
     // NEW: Handle cases where "i have" appears after other words
-    if (!cleanedText.startsWith('Study for') && !cleanedText.startsWith('Prepare for') && !cleanedText.startsWith('Work on') && !cleanedText.startsWith('Complete')) {
+    if (!cleanedText.startsWith('Study for') && !cleanedText.startsWith('Prepare for') && !cleanedText.startsWith('Work on') && !cleanedText.startsWith('Complete') && !cleanedText.startsWith('Attend')) {
       const match = cleanedText.match(/i have (.+)$/i);
       if (match) {
         const item = match[1];
@@ -259,15 +271,44 @@ const taskProcessor = {
         } else if (item.toLowerCase().includes('homework')) {
           cleanedText = `Complete ${item}`;
           console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
-        } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment')) {
-          cleanedText = `Prepare for ${item}`;
-          console.log(`🔍 SmartTask: Generated "Prepare for ${item}"`);
+        } else if (item.toLowerCase().includes('meeting') || item.toLowerCase().includes('appointment') || item.toLowerCase().includes('meetup')) {
+          cleanedText = `Attend ${item}`;
+          console.log(`🔍 SmartTask: Generated "Attend ${item}"`);
+        } else if (item.toLowerCase().includes('project') || item.toLowerCase().includes('assignment')) {
+          cleanedText = `Work on ${item}`;
+          console.log(`🔍 SmartTask: Generated "Work on ${item}"`);
         } else {
           cleanedText = `Complete ${item}`;
           console.log(`🔍 SmartTask: Generated "Complete ${item}"`);
         }
       }
     }
+    
+    // NEW: Clean up task names to remove redundant words and dates
+    if (cleanedText.includes('Complete To')) {
+      cleanedText = cleanedText.replace('Complete To', '');
+      console.log(`🔍 SmartTask: Removed redundant "Complete To"`);
+    }
+    
+    if (cleanedText.includes('Participate In')) {
+      cleanedText = cleanedText.replace('Participate In', 'Attend');
+      console.log(`🔍 SmartTask: Changed "Participate In" to "Attend"`);
+    }
+    
+    if (cleanedText.includes('Participate')) {
+      cleanedText = cleanedText.replace('Participate', 'Attend');
+      console.log(`🔍 SmartTask: Changed "Participate" to "Attend"`);
+    }
+    
+    // Remove dates from task names (they should be in deadlines)
+    const datePattern = /\b(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{1,2}(?:st|nd|rd|th)?\b/i;
+    cleanedText = cleanedText.replace(datePattern, '').trim();
+    console.log(`🔍 SmartTask: Removed date from task name`);
+    
+    // Clean up extra spaces and punctuation
+    cleanedText = cleanedText.replace(/\s+/g, ' ').trim();
+    cleanedText = cleanedText.replace(/\s*,\s*/g, ' ');
+    console.log(`🔍 SmartTask: Cleaned up spacing and punctuation`);
     
     // Capitalize first letter of each word
     cleanedText = cleanedText.split(' ')
