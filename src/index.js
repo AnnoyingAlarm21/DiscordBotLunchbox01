@@ -158,13 +158,17 @@ client.on('interactionCreate', async interaction => {
   try {
     await command.execute(interaction, client);
   } catch (error) {
-    console.error(error);
+    console.error('Command execution error:', error);
     const errorMessage = 'Oops! Something went wrong while organizing your lunchbox. 🥺';
     
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp({ content: errorMessage, ephemeral: true });
-    } else {
-      await interaction.reply({ content: errorMessage, ephemeral: true });
+    try {
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({ content: errorMessage, ephemeral: true });
+      } else {
+        await interaction.reply({ content: errorMessage, ephemeral: true });
+      }
+    } catch (replyError) {
+      console.error('Failed to send error message:', replyError);
     }
   }
 });
@@ -486,6 +490,15 @@ function saveTasksToStorage() {
     console.error('❌ Error saving tasks to storage:', error);
   }
 }
+
+// Global error handlers to prevent crashes
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
 
 // Graceful shutdown handling for Railway
 process.on('SIGTERM', () => {
