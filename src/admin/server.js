@@ -4,15 +4,15 @@ const fs = require('fs');
 
 // Create Express app for admin dashboard
 const adminApp = express();
-const adminPort = 3000;
+const adminPort = 3000; // Changed back to 3000
 
 // Middleware
 adminApp.use(express.json());
-adminApp.use(express.static('admin/public'));
+adminApp.use(express.static(__dirname));
 
 // Admin dashboard routes
 adminApp.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin/index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // API endpoint to get all user data
