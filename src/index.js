@@ -122,13 +122,13 @@ client.once('ready', () => {
     console.log('🌐 Root endpoint at: http://0.0.0.0:8080/');
   });
   
-  // Periodic task saving every 5 minutes
+  // Periodic task saving every 30 minutes
   setInterval(() => {
     if (client.userTasks && client.userTasks.size > 0) {
       console.log('💾 Periodic task save triggered');
       saveTasksToStorage();
     }
-  }, 5 * 60 * 1000); // 5 minutes
+  }, 30 * 60 * 1000); // 30 minutes
   
   // Periodic reminder cleanup every 5 minutes
   if (global.reminderSystem) {
@@ -752,7 +752,7 @@ async function handleAIConversation(message, messageContent, client) {
     
     const completion = await groq.chat.completions.create({
       messages: messages,
-      model: "llama-3.1-8b-8192",
+      model: "llama3-8b-8192",
       temperature: 0.7,
       max_tokens: 150,  // REDUCED: Shorter responses for teens
     });
@@ -800,6 +800,63 @@ async function handleAIConversation(message, messageContent, client) {
     
   } catch (error) {
     console.error('Error with AI conversation:', error);
+    
+    // If it's a Groq model error, use a different model
+    if (error.message && error.message.includes('model') && error.message.includes('not exist')) {
+      console.log('🔄 Groq model not found, trying fallback model...');
+      try {
+        const Groq = require('groq-sdk');
+        const groq = new Groq({
+          apiKey: process.env.GROQ_API_KEY,
+        });
+        
+        const systemPrompt = `You are Lunchbox, a friendly AI assistant that helps teens organize their tasks and have casual conversations. You're helpful, encouraging, and speak like a supportive friend. Keep responses short and engaging (under 150 characters). Don't mention tasks or productivity unless the user specifically asks. Just be a good conversation partner!`;
+        
+        const messages = [
+          { role: 'system', content: systemPrompt },
+          ...userContext.messages
+        ];
+        
+        const completion = await groq.chat.completions.create({
+          messages: messages,
+          model: "mixtral-8x7b-32768", // Fallback model
+          temperature: 0.7,
+          max_tokens: 150,
+        });
+        
+        const botResponse = completion.choices[0]?.message?.content || "I'm here to chat! What's on your mind?";
+        
+        // Store bot response in conversation history
+        if (client.conversationHistory && client.conversationHistory.has(message.author.id)) {
+          const userHistory = client.conversationHistory.get(message.author.id);
+          userHistory.push({
+            timestamp: new Date(),
+            author: 'Lunchbox AI',
+            content: botResponse,
+            type: 'bot'
+          });
+          
+          if (userHistory.length > 50) {
+            userHistory.splice(0, userHistory.length - 50);
+          }
+        }
+        
+        // Add bot response to context
+        userContext.messages.push({
+          role: 'assistant',
+          content: botResponse
+        });
+        
+        if (userContext.messages.length > 10) {
+          userContext.messages = userContext.messages.slice(-10);
+        }
+        
+        await message.reply(botResponse);
+        return;
+      } catch (fallbackError) {
+        console.error('Fallback model also failed:', fallbackError);
+      }
+    }
     
     // Check again for duplicate prevention in fallback
     const userId = message.author.id;
