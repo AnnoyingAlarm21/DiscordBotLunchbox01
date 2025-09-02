@@ -859,20 +859,6 @@ async function handleAIConversation(message, messageContent, client) {
       }
     }
     
-    // Check again for duplicate prevention in fallback
-    const userId = message.author.id;
-    const now = new Date();
-    const lastResponse = client.lastResponseTime.get(userId);
-    const timeSinceLastResponse = lastResponse ? (now - lastResponse) : 60000;
-
-    if (timeSinceLastResponse < 3000) { // 3 seconds
-      console.log(`🔇 Preventing duplicate fallback response to ${message.author.username}`);
-      return;
-    }
-
-    // Update last response time for fallback
-    client.lastResponseTime.set(userId, now);
-    
     // Simple fallback response that always works
     const simpleResponses = [
       "Hey there! 👋 How's your day going?",
