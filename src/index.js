@@ -752,7 +752,7 @@ async function handleAIConversation(message, messageContent, client) {
     
     const completion = await groq.chat.completions.create({
       messages: messages,
-      model: "mixtral-8x7b-32768",
+      model: "llama-3.1-8b-8192",
       temperature: 0.7,
       max_tokens: 150,  // REDUCED: Shorter responses for teens
     });
@@ -801,9 +801,9 @@ async function handleAIConversation(message, messageContent, client) {
   } catch (error) {
     console.error('Error with AI conversation:', error);
     
-    // If it's a Groq model error, use a different model
-    if (error.message && error.message.includes('model') && error.message.includes('not exist')) {
-      console.log('🔄 Groq model not found, trying fallback model...');
+    // If it's a Groq model error, try a different model
+    if (error.message && (error.message.includes('model') || error.message.includes('decommissioned'))) {
+      console.log('🔄 Groq model error, trying fallback model...');
       try {
         const Groq = require('groq-sdk');
         const groq = new Groq({
@@ -819,7 +819,7 @@ async function handleAIConversation(message, messageContent, client) {
         
         const completion = await groq.chat.completions.create({
           messages: messages,
-          model: "mixtral-8x7b-32768", // Fallback model
+          model: "llama-3.1-8b-8192", // Fallback model
           temperature: 0.7,
           max_tokens: 150,
         });
@@ -855,6 +855,7 @@ async function handleAIConversation(message, messageContent, client) {
         return;
       } catch (fallbackError) {
         console.error('Fallback model also failed:', fallbackError);
+        console.log('🔄 Using simple fallback response...');
       }
     }
     
@@ -872,8 +873,16 @@ async function handleAIConversation(message, messageContent, client) {
     // Update last response time for fallback
     client.lastResponseTime.set(userId, now);
     
-    // Fallback response
-    const fallbackResponse = "Hey! I'm here to chat and help you organize your tasks. What's up?";
+    // Simple fallback response that always works
+    const simpleResponses = [
+      "Hey there! 👋 How's your day going?",
+      "Hi! I'm here to chat and help with your tasks!",
+      "Hello! What's on your mind today?",
+      "Hey! Ready to tackle some tasks or just chat?",
+      "Hi there! How can I help you today?"
+    ];
+    
+    const fallbackResponse = simpleResponses[Math.floor(Math.random() * simpleResponses.length)];
     
     // Store fallback response in conversation history
     if (client.conversationHistory && client.conversationHistory.has(message.author.id)) {
