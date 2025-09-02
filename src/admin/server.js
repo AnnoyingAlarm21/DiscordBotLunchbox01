@@ -109,4 +109,9 @@ function startAdminDashboard() {
   });
 }
 
+// Start the server immediately if this file is run directly
+if (require.main === module) {
+  startAdminDashboard();
+}
+
 module.exports = { startAdminDashboard };
