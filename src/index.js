@@ -864,7 +864,10 @@ If they do mention something that sounds like a task, you can say "That sounds l
       "Hi! I'm here to chat and help with your tasks!",
       "Hello! What's on your mind today?",
       "Hey! Ready to tackle some tasks or just chat?",
-      "Hi there! How can I help you today?"
+      "Hi there! How can I help you today?",
+      "Hey! What's new with you?",
+      "Hi! I'm here to chat about anything!",
+      "Hello! How's everything going?"
     ];
     
     const fallbackResponse = simpleResponses[Math.floor(Math.random() * simpleResponses.length)];
