@@ -886,30 +886,18 @@ async function respondToVoiceWithAI(message, userId, guildId, client) {
     
     const connection = client.voiceConnections.get(guildId);
     if (connection) {
-      // Use OpenAI for intelligent voice responses
-      const OpenAI = require('openai');
-      const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      });
+      // Use Gemini for intelligent voice responses
+      const { GoogleGenerativeAI } = require('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       
       try {
-        const completion = await openai.chat.completions.create({
-          messages: [
-            {
-              role: "system",
-              content: "You are Lunchbox, a friendly AI productivity assistant. Respond naturally to voice conversations. Keep responses conversational and under 100 words since this is voice."
-            },
-            {
-              role: "user", 
-              content: message
-            }
-          ],
-          model: "gpt-3.5-turbo",
-          temperature: 0.7,
-          max_tokens: 150,
-        });
+        const result = await model.generateContent([
+          "You are Lunchbox, a friendly AI productivity assistant. Respond naturally to voice conversations. Keep responses conversational and under 100 words since this is voice.",
+          message
+        ]);
 
-        const aiResponse = completion.choices[0]?.message?.content || "That's interesting! I'm here to help with productivity and chat about anything.";
+        const aiResponse = result.response.text() || "That's interesting! I'm here to help with productivity and chat about anything.";
         
         // Speak the AI response
         await speakMessage(aiResponse, connection);

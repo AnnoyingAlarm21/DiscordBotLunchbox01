@@ -348,16 +348,15 @@ module.exports = {
 // AI-powered task categorization
 async function categorizeTask(taskContent) {
   try {
-    // Check if OpenAI API key is available
-    if (!process.env.OPENAI_API_KEY) {
-      console.log('⚠️ No OPENAI_API_KEY found, using fallback categorization');
-      throw new Error('No OPENAI_API_KEY available');
+    // Check if Gemini API key is available
+    if (!process.env.GEMINI_API_KEY) {
+      console.log('⚠️ No GEMINI_API_KEY found, using fallback categorization');
+      throw new Error('No GEMINI_API_KEY available');
     }
     
-    const OpenAI = require('openai');
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
     const prompt = `Categorize this task into one of these food categories:
 
@@ -370,14 +369,8 @@ Task: "${taskContent}"
 
 Respond with ONLY the category name (e.g., "🍪 Sweets" or "🥦 Vegetables").`;
 
-    const completion = await openai.chat.completions.create({
-      messages: [{ role: "user", content: prompt }],
-      model: "gpt-3.5-turbo",
-      max_tokens: 10,
-      temperature: 0.3
-    });
-
-    const response = completion.choices[0]?.message?.content?.trim();
+    const result = await model.generateContent(prompt);
+    const response = result.response.text().trim();
     
     // Validate the response is a valid category
     if (TASK_CATEGORIES[response]) {

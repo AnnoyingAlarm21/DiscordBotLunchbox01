@@ -736,28 +736,22 @@ async function handleAIConversation(message, messageContent, client) {
   }
   
   try {
-    const OpenAI = require('openai');
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
     const systemPrompt = `You are Lunchbox, a friendly AI assistant that helps teens organize their tasks and have casual conversations. You're helpful, encouraging, and speak like a supportive friend. Keep responses short and engaging (under 150 characters). Don't mention tasks or productivity unless the user specifically asks. Just be a good conversation partner!`;
     
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      ...userContext.messages
-    ];
+    const userMessage = userContext.messages[userContext.messages.length - 1]?.content || messageContent;
     
-    console.log(`🤖 Sending to OpenAI with ${messages.length} messages for context (non-task conversation)`);
+    console.log(`🤖 Sending to Gemini with context: "${userMessage}"`);
     
-    const completion = await openai.chat.completions.create({
-      messages: messages,
-      model: "gpt-3.5-turbo",
-      temperature: 0.7,
-      max_tokens: 150,  // REDUCED: Shorter responses for teens
-    });
+    const result = await model.generateContent([
+      systemPrompt,
+      userMessage
+    ]);
     
-    const botResponse = completion.choices[0]?.message?.content || "I'm here to chat! What's on your mind?";
+    const botResponse = result.response.text() || "I'm here to chat! What's on your mind?";
     
     // Store bot response in conversation history
     if (client.conversationHistory && client.conversationHistory.has(message.author.id)) {
@@ -801,30 +795,24 @@ async function handleAIConversation(message, messageContent, client) {
   } catch (error) {
     console.error('Error with AI conversation:', error);
     
-    // If it's a Groq model error, try a different model
-    if (error.message && (error.message.includes('model') || error.message.includes('decommissioned'))) {
-      console.log('🔄 AI model error, trying OpenAI fallback...');
+    // If it's an AI model error, try Gemini fallback
+    if (error.message && (error.message.includes('model') || error.message.includes('decommissioned') || error.message.includes('API'))) {
+      console.log('🔄 AI model error, trying Gemini fallback...');
       try {
-        const OpenAI = require('openai');
-        const openai = new OpenAI({
-          apiKey: process.env.OPENAI_API_KEY,
-        });
+        const { GoogleGenerativeAI } = require('@google/generative-ai');
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         
         const systemPrompt = `You are Lunchbox, a friendly AI assistant that helps teens organize their tasks and have casual conversations. You're helpful, encouraging, and speak like a supportive friend. Keep responses short and engaging (under 150 characters). Don't mention tasks or productivity unless the user specifically asks. Just be a good conversation partner!`;
         
-        const messages = [
-          { role: 'system', content: systemPrompt },
-          ...userContext.messages
-        ];
+        const userMessage = userContext.messages[userContext.messages.length - 1]?.content || messageContent;
         
-        const completion = await openai.chat.completions.create({
-          messages: messages,
-          model: "gpt-3.5-turbo", // OpenAI fallback model
-          temperature: 0.7,
-          max_tokens: 150,
-        });
+        const result = await model.generateContent([
+          systemPrompt,
+          userMessage
+        ]);
         
-        const botResponse = completion.choices[0]?.message?.content || "I'm here to chat! What's on your mind?";
+        const botResponse = result.response.text() || "I'm here to chat! What's on your mind?";
         
         // Store bot response in conversation history
         if (client.conversationHistory && client.conversationHistory.has(message.author.id)) {
