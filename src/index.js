@@ -736,9 +736,9 @@ async function handleAIConversation(message, messageContent, client) {
   }
   
   try {
-    const Groq = require('groq-sdk');
-    const groq = new Groq({
-      apiKey: process.env.GROQ_API_KEY,
+    const OpenAI = require('openai');
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
     });
     
     const systemPrompt = `You are Lunchbox, a friendly AI assistant that helps teens organize their tasks and have casual conversations. You're helpful, encouraging, and speak like a supportive friend. Keep responses short and engaging (under 150 characters). Don't mention tasks or productivity unless the user specifically asks. Just be a good conversation partner!`;
@@ -748,11 +748,11 @@ async function handleAIConversation(message, messageContent, client) {
       ...userContext.messages
     ];
     
-    console.log(`🤖 Sending to Groq with ${messages.length} messages for context (non-task conversation)`);
+    console.log(`🤖 Sending to OpenAI with ${messages.length} messages for context (non-task conversation)`);
     
-    const completion = await groq.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       messages: messages,
-      model: "llama-3.1-8b-8192",
+      model: "gpt-3.5-turbo",
       temperature: 0.7,
       max_tokens: 150,  // REDUCED: Shorter responses for teens
     });
@@ -803,11 +803,11 @@ async function handleAIConversation(message, messageContent, client) {
     
     // If it's a Groq model error, try a different model
     if (error.message && (error.message.includes('model') || error.message.includes('decommissioned'))) {
-      console.log('🔄 Groq model error, trying fallback model...');
+      console.log('🔄 AI model error, trying OpenAI fallback...');
       try {
-        const Groq = require('groq-sdk');
-        const groq = new Groq({
-          apiKey: process.env.GROQ_API_KEY,
+        const OpenAI = require('openai');
+        const openai = new OpenAI({
+          apiKey: process.env.OPENAI_API_KEY,
         });
         
         const systemPrompt = `You are Lunchbox, a friendly AI assistant that helps teens organize their tasks and have casual conversations. You're helpful, encouraging, and speak like a supportive friend. Keep responses short and engaging (under 150 characters). Don't mention tasks or productivity unless the user specifically asks. Just be a good conversation partner!`;
@@ -817,9 +817,9 @@ async function handleAIConversation(message, messageContent, client) {
           ...userContext.messages
         ];
         
-        const completion = await groq.chat.completions.create({
+        const completion = await openai.chat.completions.create({
           messages: messages,
-          model: "llama-3.1-8b-8192", // Fallback model
+          model: "gpt-3.5-turbo", // OpenAI fallback model
           temperature: 0.7,
           max_tokens: 150,
         });

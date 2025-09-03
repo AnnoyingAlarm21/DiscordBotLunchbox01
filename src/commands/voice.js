@@ -886,14 +886,14 @@ async function respondToVoiceWithAI(message, userId, guildId, client) {
     
     const connection = client.voiceConnections.get(guildId);
     if (connection) {
-      // Use Groq for intelligent voice responses
-      const Groq = require('groq-sdk');
-      const groq = new Groq({
-        apiKey: process.env.GROQ_API_KEY,
+      // Use OpenAI for intelligent voice responses
+      const OpenAI = require('openai');
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
       });
       
       try {
-        const completion = await groq.chat.completions.create({
+        const completion = await openai.chat.completions.create({
           messages: [
             {
               role: "system",
@@ -904,7 +904,7 @@ async function respondToVoiceWithAI(message, userId, guildId, client) {
               content: message
             }
           ],
-          model: "llama-3.1-8b-8192",
+          model: "gpt-3.5-turbo",
           temperature: 0.7,
           max_tokens: 150,
         });

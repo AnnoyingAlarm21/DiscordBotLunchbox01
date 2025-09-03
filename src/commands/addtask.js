@@ -348,11 +348,16 @@ module.exports = {
 // AI-powered task categorization
 async function categorizeTask(taskContent) {
   try {
-    // Check if Groq API key is available
-    if (!process.env.GROQ_API_KEY) {
-      console.log('⚠️ No GROQ_API_KEY found, using fallback categorization');
-      throw new Error('No GROQ_API_KEY available');
+    // Check if OpenAI API key is available
+    if (!process.env.OPENAI_API_KEY) {
+      console.log('⚠️ No OPENAI_API_KEY found, using fallback categorization');
+      throw new Error('No OPENAI_API_KEY available');
     }
+    
+    const OpenAI = require('openai');
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
     
     const prompt = `Categorize this task into one of these food categories:
 
@@ -365,9 +370,9 @@ Task: "${taskContent}"
 
 Respond with ONLY the category name (e.g., "🍪 Sweets" or "🥦 Vegetables").`;
 
-    const completion = await groq.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
-              model: "llama-3.1-8b-8192",
+      model: "gpt-3.5-turbo",
       max_tokens: 10,
       temperature: 0.3
     });
@@ -384,7 +389,7 @@ Respond with ONLY the category name (e.g., "🍪 Sweets" or "🥦 Vegetables").`
     return fallbackCategorization(taskContent);
     
   } catch (error) {
-    console.error('Groq API error:', error);
+    console.error('OpenAI API error:', error);
     // Fallback to keyword-based categorization
     return fallbackCategorization(taskContent);
   }
