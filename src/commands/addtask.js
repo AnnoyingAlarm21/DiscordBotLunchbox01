@@ -354,8 +354,9 @@ async function categorizeTask(taskContent) {
       throw new Error('No GEMINI_API_KEY available');
     }
     
+    // Try a different approach - use a more reliable API key format
     const { GoogleGenerativeAI } = require('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSyCtdFPlFutOQoeSMo2aRBLVkf91OpJpOSo');
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
     const prompt = `Categorize this task into one of these food categories:

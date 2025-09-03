@@ -1,6 +1,6 @@
 {
   "name": "lunchbox-discord-bot",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "A playful AI-powered productivity Discord bot that organizes tasks into food categories",
   "main": "src/index.js",
   "scripts": {

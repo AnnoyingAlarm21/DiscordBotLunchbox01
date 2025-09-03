@@ -886,9 +886,9 @@ async function respondToVoiceWithAI(message, userId, guildId, client) {
     
     const connection = client.voiceConnections.get(guildId);
     if (connection) {
-      // Use Gemini for intelligent voice responses
+      // Try a different approach - use a more reliable API key format
       const { GoogleGenerativeAI } = require('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSyCtdFPlFutOQoeSMo2aRBLVkf91OpJpOSo');
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       
       try {

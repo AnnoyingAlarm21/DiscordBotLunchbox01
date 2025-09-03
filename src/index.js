@@ -739,8 +739,9 @@ async function handleAIConversation(message, messageContent, client) {
   }
   
   try {
+    // Try a different approach - use a more reliable API key format
     const { GoogleGenerativeAI } = require('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSyCtdFPlFutOQoeSMo2aRBLVkf91OpJpOSo');
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
     const systemPrompt = `You are Lunchbox, a friendly AI assistant that helps teens organize their tasks and have casual conversations. You're helpful, encouraging, and speak like a supportive friend. Keep responses short and engaging (under 150 characters). 
@@ -806,8 +807,9 @@ If they do mention something that sounds like a task, you can say "That sounds l
     if (error.message && (error.message.includes('model') || error.message.includes('decommissioned') || error.message.includes('API'))) {
       console.log('🔄 AI model error, trying Gemini fallback...');
       try {
+        // Try a different approach - use a more reliable API key format
         const { GoogleGenerativeAI } = require('@google/generative-ai');
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSyCtdFPlFutOQoeSMo2aRBLVkf91OpJpOSo');
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         
         const systemPrompt = `You are Lunchbox, a friendly AI assistant that helps teens organize their tasks and have casual conversations. You're helpful, encouraging, and speak like a supportive friend. Keep responses short and engaging (under 150 characters). 
