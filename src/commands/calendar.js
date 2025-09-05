@@ -1,146 +1,47 @@
+// Calendar command - view calendar
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const calendarSystem = require('../utils/calendarSystem');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('calendar')
-    .setDescription('View your scheduled tasks in a calendar-like format')
-    .addStringOption(option =>
-      option.setName('view')
-        .setDescription('How to view your calendar')
+    .setDescription('View your calendar')
+    .addIntegerOption(option =>
+      option.setName('month')
+        .setDescription('Month (1-12)')
+        .setMinValue(1)
+        .setMaxValue(12)
         .setRequired(false)
-        .addChoices(
-          { name: 'Today', value: 'today' },
-          { name: 'This Week', value: 'week' },
-          { name: 'This Month', value: 'month' },
-          { name: 'All Scheduled', value: 'all' }
-        )
+    )
+    .addIntegerOption(option =>
+      option.setName('year')
+        .setDescription('Year (e.g., 2025)')
+        .setMinValue(2020)
+        .setMaxValue(2030)
+        .setRequired(false)
     ),
 
-  async execute(interaction, client) {
-    const userId = interaction.user.id;
-    const viewType = interaction.options.getString('view') || 'week';
-    
-    // Get user's tasks
-    if (!client.userTasks.has(userId)) {
-      await interaction.reply({
-        content: '🍱 You don\'t have any tasks in your lunchbox yet! Use `/addtask` to add some.',
-        ephemeral: true
-      });
-      return;
-    }
-    
-    const userData = client.userTasks.get(userId);
-    const tasks = userData.tasks.filter(task => !task.completed);
-    
-    if (tasks.length === 0) {
-      await interaction.reply({
-        content: '🍱 You don\'t have any active tasks! Use `/addtask` to add some.',
-        ephemeral: true
-      });
-      return;
-    }
-    
-    // Filter tasks based on view type
-    const now = new Date();
-    let filteredTasks = [];
-    let title = '';
-    
-    switch (viewType) {
-      case 'today':
-        filteredTasks = tasks.filter(task => {
-          if (!task.deadline) return false;
-          const taskDate = new Date(task.deadline.fullDate);
-          return taskDate.toDateString() === now.toDateString();
-        });
-        title = '📅 Today\'s Tasks';
-        break;
-        
-      case 'week':
-        const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-        const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000);
-        filteredTasks = tasks.filter(task => {
-          if (!task.deadline) return false;
-          const taskDate = new Date(task.deadline.fullDate);
-          return taskDate >= weekStart && taskDate <= weekEnd;
-        });
-        title = '📅 This Week\'s Tasks';
-        break;
-        
-      case 'month':
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        filteredTasks = tasks.filter(task => {
-          if (!task.deadline) return false;
-          const taskDate = new Date(task.deadline.fullDate);
-          return taskDate >= monthStart && taskDate <= monthEnd;
-        });
-        title = '📅 This Month\'s Tasks';
-        break;
-        
-      case 'all':
-        filteredTasks = tasks.filter(task => task.deadline);
-        title = '📅 All Scheduled Tasks';
-        break;
-    }
-    
-    if (filteredTasks.length === 0) {
-      await interaction.reply({
-        content: `🍱 No scheduled tasks found for ${viewType === 'today' ? 'today' : viewType === 'week' ? 'this week' : viewType === 'month' ? 'this month' : 'the selected period'}!`,
-        ephemeral: true
-      });
-      return;
-    }
-    
-    // Sort tasks by deadline
-    filteredTasks.sort((a, b) => new Date(a.deadline.fullDate) - new Date(b.deadline.fullDate));
-    
-    // Group tasks by date
-    const groupedTasks = {};
-    filteredTasks.forEach(task => {
-      const taskDate = new Date(task.deadline.fullDate);
-      const dateKey = taskDate.toDateString();
+  async execute(interaction) {
+    try {
+      const month = interaction.options.getInteger('month') || new Date().getMonth() + 1;
+      const year = interaction.options.getInteger('year') || new Date().getFullYear();
       
-      if (!groupedTasks[dateKey]) {
-        groupedTasks[dateKey] = [];
-      }
-      groupedTasks[dateKey].push(task);
-    });
-    
-    // Create calendar embed
-    const embed = new EmbedBuilder()
-      .setColor(0x00BFFF)
-      .setTitle(title)
-      .setDescription(`You have **${filteredTasks.length}** scheduled tasks`)
-      .setFooter({ text: 'Use /addtask to add more scheduled tasks!' })
-      .setTimestamp();
-    
-    // Add each date group
-    Object.keys(groupedTasks).sort().forEach(dateKey => {
-      const tasks = groupedTasks[dateKey];
-      const date = new Date(dateKey);
-      const dateStr = date.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        month: 'short', 
-        day: 'numeric' 
-      });
+      const userId = interaction.user.id;
       
-      let fieldValue = '';
-      tasks.forEach(task => {
-        const taskTime = task.deadline.time ? 
-          `${task.deadline.time.hour}:${task.deadline.time.minute.toString().padStart(2, '0')}` : 
-          'All day';
-        
-        fieldValue += `• **${task.content}** (${task.category})\n`;
-        fieldValue += `  ⏰ ${taskTime} | 📂 ${task.category}\n\n`;
-      });
+      // Create calendar embed
+      const calendarEmbed = calendarSystem.createCalendarEmbed(userId, year, month);
       
-      embed.addFields({
-        name: `📅 ${dateStr}`,
-        value: fieldValue.trim(),
-        inline: false
-      });
-    });
-    
-    await interaction.reply({ embeds: [embed] });
+      const embed = new EmbedBuilder()
+        .setTitle(calendarEmbed.title)
+        .setDescription(calendarEmbed.description)
+        .setColor(calendarEmbed.color)
+        .setFooter(calendarEmbed.footer);
+      
+      await interaction.reply({ embeds: [embed] });
+      
+    } catch (error) {
+      console.error('Error in calendar command:', error);
+      await interaction.reply('❌ Sorry, I had trouble loading your calendar. Please try again!');
+    }
   }
 };

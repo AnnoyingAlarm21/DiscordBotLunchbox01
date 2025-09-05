@@ -110,8 +110,18 @@ module.exports = {
           inline: false
         },
         {
-          name: '/calendar',
-          value: 'View your scheduled tasks in a calendar-like format',
+          name: '/calendar [month] [year]',
+          value: 'View your calendar with events and reminders',
+          inline: false
+        },
+        {
+          name: '/calendarsync [icsfile]',
+          value: 'Import calendar events from a .ics file',
+          inline: false
+        },
+        {
+          name: '/addevent [title] [date] [time] [location]',
+          value: 'Add a new event to your calendar with reminders',
           inline: false
         },
         {
@@ -133,7 +143,7 @@ module.exports = {
       .addFields(
         {
           name: '💡 Quick Tips',
-          value: '• You can also mention the bot or use the prefix (!) to add tasks\n• Tasks are automatically categorized using AI\n• **NEW: Voice commands!** Use `/voice listen` to create tasks by speaking\n• **NEW: Smart scheduling!** Use natural language like "due tomorrow", "by Friday", "this week"\n• Keep your lunchbox balanced for maximum productivity\n• Complete tasks to unlock achievements!',
+          value: '• You can also mention the bot or use the prefix (!) to add tasks\n• Tasks are automatically categorized using AI\n• **NEW: Calendar sync!** Import .ics files with `/calendarsync`\n• **NEW: Calendar view!** Use `/calendar` to see your events\n• **NEW: Voice commands!** Use `/voice listen` to create tasks by speaking\n• **NEW: Smart scheduling!** Use natural language like "due tomorrow", "by Friday", "this week"\n• Keep your lunchbox balanced for maximum productivity\n• Complete tasks to unlock achievements!',
           inline: false
         },
         {

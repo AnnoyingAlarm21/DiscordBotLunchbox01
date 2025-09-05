@@ -5,6 +5,7 @@ const path = require('path');
 const http = require('http');
 const taskProcessor = require('./utils/taskProcessor');
 const taskStorage = require('./utils/taskStorage');
+const calendarSystem = require('./utils/calendarSystem');
 const { startAdminDashboard } = require('./admin/server');
 
 // Load environment variables from .env file
@@ -58,6 +59,10 @@ client.once('ready', () => {
   // Load tasks from persistent storage
   client.userTasks = taskStorage.loadTasks();
   console.log(`📁 Loaded ${client.userTasks.size} users with tasks from storage`);
+  
+  // Initialize calendar system
+  calendarSystem.loadCalendarData();
+  console.log(`📅 Calendar system initialized`);
   
   // Make bot client globally available for admin dashboard
   global.botClient = client;
@@ -696,6 +701,8 @@ process.on('SIGTERM', () => {
   console.log('🔄 Received SIGTERM, shutting down gracefully...');
   // Save all tasks to storage
   saveTasksToStorage();
+  // Save calendar data
+  calendarSystem.saveCalendarData();
   // Clean up all active reminders
   if (global.reminderSystem) {
     global.reminderSystem.cleanupExpiredReminders();
@@ -708,6 +715,8 @@ process.on('SIGINT', () => {
   console.log('🔄 Received SIGINT, shutting down gracefully...');
   // Save all tasks to storage
   saveTasksToStorage();
+  // Save calendar data
+  calendarSystem.saveCalendarData();
   // Clean up all active reminders
   if (global.reminderSystem) {
     global.reminderSystem.cleanupExpiredReminders();
