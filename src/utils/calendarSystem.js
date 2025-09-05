@@ -38,21 +38,29 @@ const calendarSystem = {
         const event = parsed[key];
         
         if (event.type === 'VEVENT') {
-          const calendarEvent = this.createEvent({
-            id: event.uid,
-            title: event.summary || 'Untitled Event',
-            description: event.description || '',
-            startDate: event.start,
-            endDate: event.end,
-            location: event.location || '',
-            allDay: event.start.getHours() === 0 && event.start.getMinutes() === 0 && 
-                    event.end.getHours() === 0 && event.end.getMinutes() === 0,
-            userId: userId,
-            source: 'ics'
-          });
+          const eventStartDate = new Date(event.start);
+          const now = new Date();
           
-          events.push(calendarEvent);
-          console.log(`📅 Parsed event: ${calendarEvent.title} on ${calendarEvent.startDate.toLocaleDateString()}`);
+          // Only include future events (skip past events)
+          if (eventStartDate >= now) {
+            const calendarEvent = this.createEvent({
+              id: event.uid,
+              title: event.summary || 'Untitled Event',
+              description: event.description || '',
+              startDate: event.start,
+              endDate: event.end,
+              location: event.location || '',
+              allDay: event.start.getHours() === 0 && event.start.getMinutes() === 0 && 
+                      event.end.getHours() === 0 && event.end.getMinutes() === 0,
+              userId: userId,
+              source: 'ics'
+            });
+            
+            events.push(calendarEvent);
+            console.log(`📅 Parsed future event: ${calendarEvent.title} on ${calendarEvent.startDate.toLocaleDateString()}`);
+          } else {
+            console.log(`⏰ Skipped past event: ${event.summary || 'Untitled Event'} on ${eventStartDate.toLocaleDateString()}`);
+          }
         }
       }
       
@@ -222,6 +230,12 @@ const calendarSystem = {
     
     const now = new Date();
     const eventTime = event.startDate.getTime();
+    
+    // Don't schedule reminders for events that already happened
+    if (eventTime < now.getTime()) {
+      console.log(`⏰ Skipping reminders for past event: "${event.title}" (${event.startDate.toLocaleString()})`);
+      return;
+    }
     
     event.reminderMinutes.forEach(minutes => {
       const reminderTime = eventTime - (minutes * 60 * 1000);
