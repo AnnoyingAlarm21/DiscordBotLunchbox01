@@ -367,7 +367,7 @@ Respond with ONLY the category name (e.g., "🍪 Sweets" or "🥦 Vegetables").`
 
     const completion = await groq.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
-              model: "gpt-4o-mini",
+              model: "llama-3.1-8b-instant",
       max_tokens: 10,
       temperature: 0.3
     });

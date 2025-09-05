@@ -904,7 +904,7 @@ async function respondToVoiceWithAI(message, userId, guildId, client) {
               content: message
             }
           ],
-          model: "gpt-4o-mini",
+          model: "llama-3.3-70b-versatile",
           temperature: 0.7,
           max_tokens: 150,
         });
