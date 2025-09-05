@@ -470,6 +470,31 @@ client.on('messageCreate', async message => {
     const cleanTaskText = processedTask.cleanText;
     const hasDeadline = processedTask.deadline !== null;
     
+    // Check if the task is too vague and needs clarification
+    const vagueWords = ['something', 'thing', 'stuff', 'this', 'that', 'it', 'stuff to do', 'something to do'];
+    const isVagueTask = vagueWords.some(word => cleanTaskText.toLowerCase().includes(word));
+    
+    if (isVagueTask) {
+      console.log(`🤔 Task is too vague, asking for clarification`);
+      
+      let clarificationText = `🍱 I can see you have something planned! But I need more details to create a proper task.`;
+      
+      if (hasDeadline) {
+        const deadline = processedTask.deadline;
+        const formattedDate = deadline.fullDate.toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric'
+        });
+        clarificationText += `\n\n📅 **I detected a date:** ${formattedDate}`;
+      }
+      
+      clarificationText += `\n\n**Can you tell me what exactly you need to do?** For example:\n• "Doctor appointment on September 12"\n• "Submit homework by September 12"\n• "Meeting with boss on September 12"`;
+      
+      await message.reply(clarificationText);
+      return;
+    }
+    
     console.log(`🧹 Cleaned task text: "${cleanTaskText}"`);
     console.log(`⏰ Has deadline: ${hasDeadline}`);
     if (hasDeadline) {
