@@ -408,6 +408,76 @@ client.on('messageCreate', async message => {
         return;
       }
       
+      // Check if user is responding to a modify/new task question
+      if (pendingTaskData.additionalContext) {
+        console.log(`🔍 User responding to modify/new task question: "${response}"`);
+        
+        if (response.includes('modify') || response === '1') {
+          console.log(`✏️ User wants to modify existing task`);
+          
+          // Combine the original task with the additional context
+          const modifiedTaskText = `${pendingTaskData.cleanText} - ${pendingTaskData.additionalContext}`;
+          
+          let suggestionText = `🍱 Perfect! Would you like me to add **"${modifiedTaskText}"** as a task?`;
+          
+          if (pendingTaskData.deadline) {
+            const deadline = pendingTaskData.deadline;
+            const formattedDate = deadline.fullDate.toLocaleDateString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric'
+            });
+            suggestionText += `\n\n📅 **Due:** ${formattedDate}`;
+            suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
+          }
+          
+          suggestionText += `\n\n💬 **To start chatting naturally with me, use \`/conversate\`**`;
+          
+          await message.reply(suggestionText);
+          
+          // Update the pending task with the modified text
+          client.pendingTasks.set(message.author.id, {
+            originalText: message.content,
+            cleanText: modifiedTaskText,
+            deadline: pendingTaskData.deadline
+          });
+          
+          return;
+        } else if (response.includes('new task') || response.includes('new') || response === '2') {
+          console.log(`➕ User wants to create a new separate task`);
+          
+          // Process the additional context as a new task
+          const newTask = taskProcessor.cleanTaskText(pendingTaskData.additionalContext);
+          const newTaskText = newTask.cleanText;
+          
+          let suggestionText = `🍱 Got it! Would you like me to add **"${newTaskText}"** as a separate task?`;
+          
+          if (newTask.deadline) {
+            const deadline = newTask.deadline;
+            const formattedDate = deadline.fullDate.toLocaleDateString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric'
+            });
+            suggestionText += `\n\n📅 **Due:** ${formattedDate}`;
+            suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
+          }
+          
+          suggestionText += `\n\n💬 **To start chatting naturally with me, use \`/conversate\`**`;
+          
+          await message.reply(suggestionText);
+          
+          // Update the pending task with the new task text
+          client.pendingTasks.set(message.author.id, {
+            originalText: pendingTaskData.additionalContext,
+            cleanText: newTaskText,
+            deadline: newTask.deadline
+          });
+          
+          return;
+        }
+      }
+      
       // Check if user is providing additional context (not a new task)
       const contextWords = ['but', 'however', 'also', 'additionally', 'plus', 'and', 'or', 'for', 'at', 'on', 'in', 'due', 'when', 'where', 'how'];
       const hasContextWords = contextWords.some(word => messageContent.includes(word));
