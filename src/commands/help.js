@@ -140,6 +140,26 @@ module.exports = {
           inline: false
         },
         {
+          name: '/emergencystop',
+          value: '🚨 EMERGENCY: Stop all reminders and clear old events immediately',
+          inline: false
+        },
+        {
+          name: '/stopreminders',
+          value: 'Stop all active reminders and notifications',
+          inline: false
+        },
+        {
+          name: '/clearallevents [confirm]',
+          value: 'Remove ALL events from your calendar (use with caution!)',
+          inline: false
+        },
+        {
+          name: '/restartbot [reason]',
+          value: 'Restart the bot (admin only)',
+          inline: false
+        },
+        {
           name: '/timer',
           value: 'Set a countdown timer and get notified when it goes off',
           inline: false

@@ -14,9 +14,8 @@ const reminderSystem = {
     }
     
     const reminderTimes = [
-      { time: 10 * 60 * 1000, label: '10 minutes' }, // 10 minutes before
       { time: 5 * 60 * 1000, label: '5 minutes' },   // 5 minutes before
-      { time: 0, label: 'NOW' }                       // Exact time
+      { time: 0, label: 'NOW' }                       // Exact time only
     ];
     
     const reminders = [];

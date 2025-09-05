@@ -18,7 +18,7 @@ const calendarSystem = {
       endDate: new Date(eventData.endDate),
       location: eventData.location || '',
       allDay: eventData.allDay || false,
-      reminderMinutes: eventData.reminderMinutes || [10, 5, 0], // 10min, 5min, exact time
+      reminderMinutes: eventData.reminderMinutes || [5, 0], // 5min, exact time only
       category: eventData.category || 'General',
       source: eventData.source || 'manual', // 'manual', 'ics', 'discord'
       createdAt: new Date(),
