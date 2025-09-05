@@ -886,18 +886,30 @@ async function respondToVoiceWithAI(message, userId, guildId, client) {
     
     const connection = client.voiceConnections.get(guildId);
     if (connection) {
-      // Try a different approach - use a more reliable API key format
-      const { GoogleGenerativeAI } = require('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSyCtdFPlFutOQoeSMo2aRBLVkf91OpJpOSo');
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      // Use Groq for intelligent voice responses
+      const Groq = require('groq-sdk');
+      const groq = new Groq({
+        apiKey: process.env.GROQ_API_KEY,
+      });
       
       try {
-        const result = await model.generateContent([
-          "You are Lunchbox, a friendly AI productivity assistant. Respond naturally to voice conversations. Keep responses conversational and under 100 words since this is voice.",
-          message
-        ]);
+        const completion = await groq.chat.completions.create({
+          messages: [
+            {
+              role: "system",
+              content: "You are Lunchbox, a friendly AI productivity assistant. Respond naturally to voice conversations. Keep responses conversational and under 100 words since this is voice."
+            },
+            {
+              role: "user", 
+              content: message
+            }
+          ],
+          model: "llama-3.1-8b-8192",
+          temperature: 0.7,
+          max_tokens: 150,
+        });
 
-        const aiResponse = result.response.text() || "That's interesting! I'm here to help with productivity and chat about anything.";
+        const aiResponse = completion.choices[0]?.message?.content || "That's interesting! I'm here to help with productivity and chat about anything.";
         
         // Speak the AI response
         await speakMessage(aiResponse, connection);

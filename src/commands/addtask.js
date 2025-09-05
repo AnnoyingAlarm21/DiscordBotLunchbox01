@@ -348,16 +348,11 @@ module.exports = {
 // AI-powered task categorization
 async function categorizeTask(taskContent) {
   try {
-    // Check if Gemini API key is available
-    if (!process.env.GEMINI_API_KEY) {
-      console.log('⚠️ No GEMINI_API_KEY found, using fallback categorization');
-      throw new Error('No GEMINI_API_KEY available');
+    // Check if Groq API key is available
+    if (!process.env.GROQ_API_KEY) {
+      console.log('⚠️ No GROQ_API_KEY found, using fallback categorization');
+      throw new Error('No GROQ_API_KEY available');
     }
-    
-    // Try a different approach - use a more reliable API key format
-    const { GoogleGenerativeAI } = require('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSyCtdFPlFutOQoeSMo2aRBLVkf91OpJpOSo');
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
     const prompt = `Categorize this task into one of these food categories:
 
@@ -370,8 +365,14 @@ Task: "${taskContent}"
 
 Respond with ONLY the category name (e.g., "🍪 Sweets" or "🥦 Vegetables").`;
 
-    const result = await model.generateContent(prompt);
-    const response = result.response.text().trim();
+    const completion = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+              model: "llama-3.1-8b-8192",
+      max_tokens: 10,
+      temperature: 0.3
+    });
+
+    const response = completion.choices[0]?.message?.content?.trim();
     
     // Validate the response is a valid category
     if (TASK_CATEGORIES[response]) {
@@ -383,7 +384,7 @@ Respond with ONLY the category name (e.g., "🍪 Sweets" or "🥦 Vegetables").`
     return fallbackCategorization(taskContent);
     
   } catch (error) {
-    console.error('OpenAI API error:', error);
+    console.error('Groq API error:', error);
     // Fallback to keyword-based categorization
     return fallbackCategorization(taskContent);
   }

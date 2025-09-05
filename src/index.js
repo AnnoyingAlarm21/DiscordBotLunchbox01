@@ -431,94 +431,91 @@ client.on('messageCreate', async message => {
   }
   
   // NEW: Smart task detection from conversation (the core feature!)
-  // Only detect tasks if user is NOT in conversation mode
-  if (!isInConversationMode && !isInPrivateThread) {
-    const taskKeywords = [
-      'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
-      'got', 'have', 'need', 'want', 'plan', 'going', 'doing', 'attending',
-      'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
-      'book club', 'club', 'class', 'session', 'event', 'activity', 'gathering',
-      'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
-      'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice',
-      'schedule', 'due', 'get done', 'finish', 'complete', 'submit', 'turn in',
-      'remind', 'set reminder', 'calendar', 'plan', 'organize', 'arrange',
-      'doctor', 'dentist', 'medical', 'checkup', 'exam', 'test', 'procedure',
-      'therapy', 'consultation', 'follow-up', 'surgery', 'treatment',
-      'deliverables', 'coordination', 'work timings', 'timeline', 'requirements',
-      'deadlines', 'milestones', 'goals', 'objectives', 'targets', 'priorities',
-      'tasks', 'assignments', 'responsibilities', 'duties', 'chores', 'errands'
-    ];
+  const taskKeywords = [
+    'need to', 'have to', 'should', 'must', 'want to', 'plan to', 'going to',
+    'got', 'have', 'need', 'want', 'plan', 'going', 'doing', 'attending',
+    'homework', 'study', 'work', 'project', 'meeting', 'appointment', 'deadline',
+    'book club', 'club', 'class', 'session', 'event', 'activity', 'gathering',
+    'clean', 'organize', 'buy', 'call', 'email', 'text', 'message', 'visit',
+    'exercise', 'workout', 'cook', 'shop', 'read', 'write', 'learn', 'practice',
+    'schedule', 'due', 'get done', 'finish', 'complete', 'submit', 'turn in',
+    'remind', 'set reminder', 'calendar', 'plan', 'organize', 'arrange',
+    'doctor', 'dentist', 'medical', 'checkup', 'exam', 'test', 'procedure',
+    'therapy', 'consultation', 'follow-up', 'surgery', 'treatment',
+    'deliverables', 'coordination', 'work timings', 'timeline', 'requirements',
+    'deadlines', 'milestones', 'goals', 'objectives', 'targets', 'priorities',
+    'tasks', 'assignments', 'responsibilities', 'duties', 'chores', 'errands'
+  ];
+  
+  const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
+  
+  // Check if this is likely additional context rather than a new task
+  const contextIndicators = ['but', 'however', 'also', 'additionally', 'plus', 'because', 'since', 'while'];
+  const isLikelyContext = contextIndicators.some(indicator => messageContent.includes(indicator));
+  
+  // Check if user is in conversation mode and has pending tasks
+  const hasPendingTask = client.pendingTasks && client.pendingTasks.has(message.author.id);
+  
+  // Priority: Handle pending tasks first, then detect new tasks, then AI conversation
+  if (hasPendingTask) {
+    console.log(`🎯 User has pending task, processing response to existing task`);
+    // This will be handled by the pending task logic above
+    return;
+  }
+  
+  // NEW: Smart task detection - only suggest tasks when it makes sense
+  if (hasTaskKeywords && !isLikelyContext) {
+    console.log(`🎯 Task detected from conversation: "${message.content}"`);
     
-    const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
+    // Process the task text to clean it up
+    const processedTask = taskProcessor.cleanTaskText(message.content);
+    const cleanTaskText = processedTask.cleanText;
+    const hasDeadline = processedTask.deadline !== null;
     
-    // Check if this is likely additional context rather than a new task
-    const contextIndicators = ['but', 'however', 'also', 'additionally', 'plus', 'because', 'since', 'while'];
-    const isLikelyContext = contextIndicators.some(indicator => messageContent.includes(indicator));
-    
-    // Check if user is in conversation mode and has pending tasks
-    const hasPendingTask = client.pendingTasks && client.pendingTasks.has(message.author.id);
-    
-    // Priority: Handle pending tasks first, then detect new tasks, then AI conversation
-    if (hasPendingTask) {
-      console.log(`🎯 User has pending task, processing response to existing task`);
-      // This will be handled by the pending task logic above
-      return;
+    console.log(`🧹 Cleaned task text: "${cleanTaskText}"`);
+    console.log(`⏰ Has deadline: ${hasDeadline}`);
+    if (hasDeadline) {
+      console.log(`📅 Deadline: ${processedTask.deadline.fullDate.toLocaleString()}`);
     }
     
-    // NEW: Smart task detection - only suggest tasks when it makes sense
-    if (hasTaskKeywords && !isLikelyContext) {
-      console.log(`🎯 Task detected from conversation: "${message.content}"`);
-      
-      // Process the task text to clean it up
-      const processedTask = taskProcessor.cleanTaskText(message.content);
-      const cleanTaskText = processedTask.cleanText;
-      const hasDeadline = processedTask.deadline !== null;
-      
-      console.log(`🧹 Cleaned task text: "${cleanTaskText}"`);
-      console.log(`⏰ Has deadline: ${hasDeadline}`);
-      if (hasDeadline) {
-        console.log(`📅 Deadline: ${processedTask.deadline.fullDate.toLocaleString()}`);
-      }
-      
-      // Create a better task suggestion - use the CLEANED text, not raw message
-      let suggestionText = `🍱 That sounds like something for your lunchbox! Would you like me to add **"${cleanTaskText}"** as a task?`;
-      
-      if (hasDeadline) {
-        const deadline = processedTask.deadline;
-        suggestionText += `\n\n⏰ **Deadline detected:** ${deadline.fullDate.toLocaleString()}`;
-        suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
-      }
-      
-      suggestionText += `\n\n💬 **To start chatting naturally with me, use \`/conversate\`**`;
-      
-      console.log(`💬 Sending task suggestion: "${suggestionText}"`);
-      await message.reply(suggestionText);
-      
-      // Store the processed task for this user - store the CLEANED text
-      if (!client.pendingTasks) client.pendingTasks = new Map();
-      client.pendingTasks.set(message.author.id, {
-        originalText: message.content,
-        cleanText: cleanTaskText,  // This is the cleaned version
-        deadline: processedTask.deadline
+    // Create a better task suggestion - use the CLEANED text, not raw message
+    let suggestionText = `🍱 That sounds like something for your lunchbox! Would you like me to add **"${cleanTaskText}"** as a task?`;
+    
+    if (hasDeadline) {
+      const deadline = processedTask.deadline;
+      suggestionText += `\n\n⏰ **Deadline detected:** ${deadline.fullDate.toLocaleString()}`;
+      suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
+    }
+    
+    suggestionText += `\n\n💬 **To start chatting naturally with me, use \`/conversate\`**`;
+    
+    console.log(`💬 Sending task suggestion: "${suggestionText}"`);
+    await message.reply(suggestionText);
+    
+    // Store the processed task for this user - store the CLEANED text
+    if (!client.pendingTasks) client.pendingTasks = new Map();
+    client.pendingTasks.set(message.author.id, {
+      originalText: message.content,
+      cleanText: cleanTaskText,  // This is the cleaned version
+      deadline: processedTask.deadline
+    });
+    
+    console.log(`💾 Stored pending task for user ${message.author.username}:`, JSON.stringify(client.pendingTasks.get(message.author.id), null, 2));
+    
+    // Also store in conversation context for AI to remember
+    if (!client.conversationContext.has(message.author.id)) {
+      client.conversationContext.set(message.author.id, {
+        messages: [],
+        lastTaskContext: null,
+        userPreferences: {},
+        conversationStart: new Date()
       });
-      
-      console.log(`💾 Stored pending task for user ${message.author.username}:`, JSON.stringify(client.pendingTasks.get(message.author.id), null, 2));
-      
-      // Also store in conversation context for AI to remember
-      if (!client.conversationContext.has(message.author.id)) {
-        client.conversationContext.set(message.author.id, {
-          messages: [],
-          lastTaskContext: null,
-          userPreferences: {},
-          conversationStart: new Date()
-        });
-      }
-      const userContext = client.conversationContext.get(message.author.id);
-      userContext.lastTaskContext = cleanTaskText;
-      
-      console.log(`🧠 Updated conversation context for user ${message.author.username}`);
-      return;
     }
+    const userContext = client.conversationContext.get(message.author.id);
+    userContext.lastTaskContext = cleanTaskText;
+    
+    console.log(`🧠 Updated conversation context for user ${message.author.username}`);
+    return;
   }
   
   // For users in conversation mode, use AI conversation handler (PRIORITY)
@@ -739,27 +736,28 @@ async function handleAIConversation(message, messageContent, client) {
   }
   
   try {
-    // Try a different approach - use a more reliable API key format
-    const { GoogleGenerativeAI } = require('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSyCtdFPlFutOQoeSMo2aRBLVkf91OpJpOSo');
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const Groq = require('groq-sdk');
+    const groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    });
     
-    const systemPrompt = `You are Lunchbox, a friendly AI assistant that helps teens organize their tasks and have casual conversations. You're helpful, encouraging, and speak like a supportive friend. Keep responses short and engaging (under 150 characters). 
-
-IMPORTANT: Only suggest creating a task if the user explicitly mentions wanting to do something, needing to do something, or planning to do something. Do NOT suggest tasks for general questions like "what are you doing" or "how are you" or casual conversation. Just be a good conversation partner!
-
-If they do mention something that sounds like a task, you can say "That sounds like something for your lunchbox! Should I make a task about it?" but only if it's clearly task-related.`;
+    const systemPrompt = `You are Lunchbox, a friendly AI assistant that helps teens organize their tasks and have casual conversations. You're helpful, encouraging, and speak like a supportive friend. Keep responses short and engaging (under 150 characters). Don't mention tasks or productivity unless the user specifically asks. Just be a good conversation partner!`;
     
-    const userMessage = userContext.messages[userContext.messages.length - 1]?.content || messageContent;
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...userContext.messages
+    ];
     
-    console.log(`🤖 Sending to Gemini with context: "${userMessage}"`);
+    console.log(`🤖 Sending to Groq with ${messages.length} messages for context (non-task conversation)`);
     
-    const result = await model.generateContent([
-      systemPrompt,
-      userMessage
-    ]);
+    const completion = await groq.chat.completions.create({
+      messages: messages,
+      model: "llama-3.1-8b-8192",
+      temperature: 0.7,
+      max_tokens: 150,  // REDUCED: Shorter responses for teens
+    });
     
-    const botResponse = result.response.text() || "I'm here to chat! What's on your mind?";
+    const botResponse = completion.choices[0]?.message?.content || "I'm here to chat! What's on your mind?";
     
     // Store bot response in conversation history
     if (client.conversationHistory && client.conversationHistory.has(message.author.id)) {
@@ -803,29 +801,30 @@ If they do mention something that sounds like a task, you can say "That sounds l
   } catch (error) {
     console.error('Error with AI conversation:', error);
     
-    // If it's an AI model error, try Gemini fallback
-    if (error.message && (error.message.includes('model') || error.message.includes('decommissioned') || error.message.includes('API'))) {
-      console.log('🔄 AI model error, trying Gemini fallback...');
+    // If it's a Groq model error, try a different model
+    if (error.message && (error.message.includes('model') || error.message.includes('decommissioned'))) {
+      console.log('🔄 Groq model error, trying fallback model...');
       try {
-        // Try a different approach - use a more reliable API key format
-        const { GoogleGenerativeAI } = require('@google/generative-ai');
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSyCtdFPlFutOQoeSMo2aRBLVkf91OpJpOSo');
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const Groq = require('groq-sdk');
+        const groq = new Groq({
+          apiKey: process.env.GROQ_API_KEY,
+        });
         
-        const systemPrompt = `You are Lunchbox, a friendly AI assistant that helps teens organize their tasks and have casual conversations. You're helpful, encouraging, and speak like a supportive friend. Keep responses short and engaging (under 150 characters). 
-
-IMPORTANT: Only suggest creating a task if the user explicitly mentions wanting to do something, needing to do something, or planning to do something. Do NOT suggest tasks for general questions like "what are you doing" or "how are you" or casual conversation. Just be a good conversation partner!
-
-If they do mention something that sounds like a task, you can say "That sounds like something for your lunchbox! Should I make a task about it?" but only if it's clearly task-related.`;
+        const systemPrompt = `You are Lunchbox, a friendly AI assistant that helps teens organize their tasks and have casual conversations. You're helpful, encouraging, and speak like a supportive friend. Keep responses short and engaging (under 150 characters). Don't mention tasks or productivity unless the user specifically asks. Just be a good conversation partner!`;
         
-        const userMessage = userContext.messages[userContext.messages.length - 1]?.content || messageContent;
+        const messages = [
+          { role: 'system', content: systemPrompt },
+          ...userContext.messages
+        ];
         
-        const result = await model.generateContent([
-          systemPrompt,
-          userMessage
-        ]);
+        const completion = await groq.chat.completions.create({
+          messages: messages,
+          model: "llama-3.1-8b-8192", // Fallback model
+          temperature: 0.7,
+          max_tokens: 150,
+        });
         
-        const botResponse = result.response.text() || "I'm here to chat! What's on your mind?";
+        const botResponse = completion.choices[0]?.message?.content || "I'm here to chat! What's on your mind?";
         
         // Store bot response in conversation history
         if (client.conversationHistory && client.conversationHistory.has(message.author.id)) {
@@ -866,10 +865,7 @@ If they do mention something that sounds like a task, you can say "That sounds l
       "Hi! I'm here to chat and help with your tasks!",
       "Hello! What's on your mind today?",
       "Hey! Ready to tackle some tasks or just chat?",
-      "Hi there! How can I help you today?",
-      "Hey! What's new with you?",
-      "Hi! I'm here to chat about anything!",
-      "Hello! How's everything going?"
+      "Hi there! How can I help you today?"
     ];
     
     const fallbackResponse = simpleResponses[Math.floor(Math.random() * simpleResponses.length)];
