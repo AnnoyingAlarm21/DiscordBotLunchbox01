@@ -125,6 +125,21 @@ module.exports = {
           inline: false
         },
         {
+          name: '/timezone [timezone]',
+          value: 'Set your timezone for proper calendar event scheduling',
+          inline: false
+        },
+        {
+          name: '/calendarsyncsetup [name] [url] [interval]',
+          value: 'Set up automatic calendar syncing from a URL',
+          inline: false
+        },
+        {
+          name: '/calendarsynclist',
+          value: 'View and manage your calendar sync configurations',
+          inline: false
+        },
+        {
           name: '/timer',
           value: 'Set a countdown timer and get notified when it goes off',
           inline: false

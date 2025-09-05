@@ -2,6 +2,7 @@
 const ical = require('node-ical');
 const fs = require('fs');
 const path = require('path');
+const timezoneSystem = require('./timezoneSystem');
 
 const calendarSystem = {
   // Store user calendars
@@ -158,6 +159,10 @@ const calendarSystem = {
     const firstDay = new Date(year, month - 1, 1).getDay();
     const daysInMonth = new Date(year, month, 0).getDate();
     
+    // Get user timezone
+    const userTimezone = timezoneSystem.getUserTimezone(userId);
+    const timezoneOffset = timezoneSystem.getTimezoneOffset(userTimezone);
+    
     // Create calendar grid
     let calendarGrid = `\`\`\`\n`;
     calendarGrid += `${monthName} ${year}\n`;
@@ -217,7 +222,7 @@ const calendarSystem = {
       description: calendarGrid + eventsList,
       color: 0x00ff00, // Green color
       footer: {
-        text: `Use /addevent to add new events • Use /calendarsync to import .ics files`
+        text: `Timezone: ${userTimezone} (${timezoneOffset}) • Use /addevent to add events • Use /calendarsyncsetup for auto-sync`
       }
     };
   },

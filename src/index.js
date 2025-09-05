@@ -6,6 +6,8 @@ const http = require('http');
 const taskProcessor = require('./utils/taskProcessor');
 const taskStorage = require('./utils/taskStorage');
 const calendarSystem = require('./utils/calendarSystem');
+const timezoneSystem = require('./utils/timezoneSystem');
+const calendarSyncSystem = require('./utils/calendarSyncSystem');
 const { startAdminDashboard } = require('./admin/server');
 
 // Load environment variables from .env file
@@ -63,6 +65,15 @@ client.once('ready', () => {
   // Initialize calendar system
   calendarSystem.loadCalendarData();
   console.log(`📅 Calendar system initialized`);
+  
+  // Initialize timezone system
+  timezoneSystem.loadTimezoneData();
+  console.log(`🌍 Timezone system initialized`);
+  
+  // Initialize calendar sync system
+  calendarSyncSystem.loadSyncConfigs();
+  calendarSyncSystem.restartAllSyncJobs();
+  console.log(`🔄 Calendar sync system initialized`);
   
   // Make bot client globally available for admin dashboard
   global.botClient = client;
@@ -703,6 +714,10 @@ process.on('SIGTERM', () => {
   saveTasksToStorage();
   // Save calendar data
   calendarSystem.saveCalendarData();
+  // Save timezone data
+  timezoneSystem.saveTimezoneData();
+  // Save sync configurations
+  calendarSyncSystem.saveSyncConfigs();
   // Clean up all active reminders
   if (global.reminderSystem) {
     global.reminderSystem.cleanupExpiredReminders();
@@ -717,6 +732,10 @@ process.on('SIGINT', () => {
   saveTasksToStorage();
   // Save calendar data
   calendarSystem.saveCalendarData();
+  // Save timezone data
+  timezoneSystem.saveTimezoneData();
+  // Save sync configurations
+  calendarSyncSystem.saveSyncConfigs();
   // Clean up all active reminders
   if (global.reminderSystem) {
     global.reminderSystem.cleanupExpiredReminders();
