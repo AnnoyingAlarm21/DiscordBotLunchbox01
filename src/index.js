@@ -456,6 +456,45 @@ client.on('messageCreate', async message => {
   
   // Priority: Handle pending tasks first, then detect new tasks, then AI conversation
   if (hasPendingTask) {
+    const pendingTaskData = client.pendingTasks.get(message.author.id);
+    
+    // Check if this is clarification for a vague task
+    if (pendingTaskData.awaitingClarification) {
+      console.log(`🤔 User providing clarification for vague task`);
+      
+      // Process the clarification text
+      const clarifiedTask = taskProcessor.cleanTaskText(message.content);
+      const clarifiedText = clarifiedTask.cleanText;
+      
+      // Combine the clarified task with the original date
+      let suggestionText = `🍱 Perfect! Now I understand. Would you like me to add **"${clarifiedText}"** as a task?`;
+      
+      if (pendingTaskData.deadline) {
+        const deadline = pendingTaskData.deadline;
+        const formattedDate = deadline.fullDate.toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric'
+        });
+        suggestionText += `\n\n📅 **Due:** ${formattedDate}`;
+        suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
+      }
+      
+      suggestionText += `\n\n💬 **To start chatting naturally with me, use \`/conversate\`**`;
+      
+      await message.reply(suggestionText);
+      
+      // Update the pending task with the clarified text
+      client.pendingTasks.set(message.author.id, {
+        originalText: message.content,
+        cleanText: clarifiedText,
+        deadline: pendingTaskData.deadline
+      });
+      
+      console.log(`💾 Updated pending task with clarification for user ${message.author.username}`);
+      return;
+    }
+    
     console.log(`🎯 User has pending task, processing response to existing task`);
     // This will be handled by the pending task logic above
     return;
@@ -487,6 +526,16 @@ client.on('messageCreate', async message => {
           year: 'numeric'
         });
         clarificationText += `\n\n📅 **I detected a date:** ${formattedDate}`;
+        
+        // Store the date for when user clarifies the task
+        if (!client.pendingTasks) client.pendingTasks = new Map();
+        client.pendingTasks.set(message.author.id, {
+          originalText: message.content,
+          cleanText: cleanTaskText,
+          deadline: processedTask.deadline,
+          awaitingClarification: true
+        });
+        console.log(`💾 Stored pending clarification with date for user ${message.author.username}`);
       }
       
       clarificationText += `\n\n**Can you tell me what exactly you need to do?** For example:\n• "Doctor appointment on September 12"\n• "Submit homework by September 12"\n• "Meeting with boss on September 12"`;
