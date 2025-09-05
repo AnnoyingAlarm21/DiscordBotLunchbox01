@@ -141,6 +141,46 @@ const taskProcessor = {
     const now = new Date();
     const lowerText = text.toLowerCase();
     
+    // Specific date parsing (e.g., "september 12", "dec 25", "jan 1")
+    const monthNames = {
+      'january': 0, 'jan': 0,
+      'february': 1, 'feb': 1,
+      'march': 2, 'mar': 2,
+      'april': 3, 'apr': 3,
+      'may': 4,
+      'june': 5, 'jun': 5,
+      'july': 6, 'jul': 6,
+      'august': 7, 'aug': 7,
+      'september': 8, 'sep': 8, 'sept': 8,
+      'october': 9, 'oct': 9,
+      'november': 10, 'nov': 10,
+      'december': 11, 'dec': 11
+    };
+    
+    // Look for patterns like "september 12", "dec 25", "jan 1st"
+    const specificDatePattern = /(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\s+(\d{1,2})(?:st|nd|rd|th)?/i;
+    const specificDateMatch = lowerText.match(specificDatePattern);
+    
+    if (specificDateMatch) {
+      const monthName = specificDateMatch[1].toLowerCase();
+      const day = parseInt(specificDateMatch[2]);
+      const monthIndex = monthNames[monthName];
+      
+      if (monthIndex !== undefined && day >= 1 && day <= 31) {
+        // Use current year, or next year if the date has already passed
+        let year = now.getFullYear();
+        const targetDate = new Date(year, monthIndex, day);
+        
+        // If the date has already passed this year, use next year
+        if (targetDate < now) {
+          year = year + 1;
+        }
+        
+        console.log(`🔍 TaskProcessor: Parsed specific date: ${monthName} ${day}, ${year}`);
+        return new Date(year, monthIndex, day);
+      }
+    }
+    
     // Immediate/urgent
     if (lowerText.includes('now') || lowerText.includes('asap') || lowerText.includes('urgent')) {
       return new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes from now

@@ -481,7 +481,12 @@ client.on('messageCreate', async message => {
     
     if (hasDeadline) {
       const deadline = processedTask.deadline;
-      suggestionText += `\n\n⏰ **Deadline detected:** ${deadline.fullDate.toLocaleString()}`;
+      const formattedDate = deadline.fullDate.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      });
+      suggestionText += `\n\n📅 **Due:** ${formattedDate}`;
       suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
     }
     
@@ -928,7 +933,12 @@ async function processTaskFromConversation(message, messageContent, client) {
     
     if (hasDeadline) {
       const deadline = processedTask.deadline;
-      suggestionText += `\n\n⏰ **Deadline detected:** ${deadline.fullDate.toLocaleString()}`;
+      const formattedDate = deadline.fullDate.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      });
+      suggestionText += `\n\n📅 **Due:** ${formattedDate}`;
       suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
     }
     
