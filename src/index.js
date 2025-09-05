@@ -752,7 +752,7 @@ async function handleAIConversation(message, messageContent, client) {
     
     const completion = await groq.chat.completions.create({
       messages: messages,
-      model: "llama-3.3-70b",
+      model: "gpt-4o-mini",
       temperature: 0.7,
       max_tokens: 150,  // REDUCED: Shorter responses for teens
     });
@@ -819,7 +819,7 @@ async function handleAIConversation(message, messageContent, client) {
         
         const completion = await groq.chat.completions.create({
           messages: messages,
-          model: "llama-3.3-70b", // Fallback model
+          model: "gpt-4o-mini", // Fallback model
           temperature: 0.7,
           max_tokens: 150,
         });
