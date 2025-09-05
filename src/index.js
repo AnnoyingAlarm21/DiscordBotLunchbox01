@@ -428,7 +428,18 @@ client.on('messageCreate', async message => {
       if (pendingTaskData.additionalContext) {
         console.log(`🔍 User responding to modify/new task question: "${response}"`);
         
-        if (response.includes('modify') || response === '1') {
+        // More flexible detection for modify responses
+        const modifyKeywords = ['modify', 'change', 'update', 'edit', 'fix', 'adjust', '1', 'yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'add to', 'combine'];
+        const newTaskKeywords = ['new task', 'new', 'separate', 'different', 'another', '2', 'no', 'nah', 'nope', 'create new'];
+        
+        const wantsModify = modifyKeywords.some(keyword => 
+          response.toLowerCase().includes(keyword.toLowerCase())
+        );
+        const wantsNewTask = newTaskKeywords.some(keyword => 
+          response.toLowerCase().includes(keyword.toLowerCase())
+        );
+        
+        if (wantsModify) {
           console.log(`✏️ User wants to modify existing task`);
           
           // Combine the original task with the additional context
@@ -444,7 +455,7 @@ client.on('messageCreate', async message => {
               year: 'numeric'
             });
             suggestionText += `\n\n📅 **Due:** ${formattedDate}`;
-            suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
+            suggestionText += `\n🔔 **I'll send you reminders at:** 5 min • Exact time`;
           }
           
           suggestionText += `\n\n💬 **To start chatting naturally with me, use \`/conversate\`**`;
@@ -459,7 +470,7 @@ client.on('messageCreate', async message => {
           });
           
           return;
-        } else if (response.includes('new task') || response.includes('new') || response === '2') {
+        } else if (wantsNewTask) {
           console.log(`➕ User wants to create a new separate task`);
           
           // Process the additional context as a new task
@@ -476,7 +487,7 @@ client.on('messageCreate', async message => {
               year: 'numeric'
             });
             suggestionText += `\n\n📅 **Due:** ${formattedDate}`;
-            suggestionText += `\n🔔 **I'll send you reminders at:** 10 min • 5 min • Exact time`;
+            suggestionText += `\n🔔 **I'll send you reminders at:** 5 min • Exact time`;
           }
           
           suggestionText += `\n\n💬 **To start chatting naturally with me, use \`/conversate\`**`;
@@ -491,7 +502,49 @@ client.on('messageCreate', async message => {
           });
           
           return;
+        } else {
+          // User gave an unclear response - ask for clarification with simpler options
+          console.log(`❓ User gave unclear response, asking for simple clarification`);
+          await message.reply(`🍱 I need a clearer answer! Just say:\n\n**"modify"** or **"yes"** - to add this info to your existing task\n**"new"** or **"no"** - to create a separate task\n\nOr just type **"1"** for modify or **"2"** for new task!`);
+          return;
         }
+      }
+      
+      // Check if user is just confirming the original task (simple yes/no)
+      const simpleConfirmations = ['yes', 'yeah', 'yep', 'sure', 'ok', 'okay', 'add it', 'do it', 'create it'];
+      const simpleRejections = ['no', 'nah', 'nope', 'cancel', 'stop', 'nevermind'];
+      
+      const isSimpleYes = simpleConfirmations.some(word => 
+        messageContent.toLowerCase().trim() === word.toLowerCase()
+      );
+      const isSimpleNo = simpleRejections.some(word => 
+        messageContent.toLowerCase().trim() === word.toLowerCase()
+      );
+      
+      if (isSimpleYes) {
+        console.log(`✅ User confirmed original task with simple yes`);
+        let suggestionText = `🍱 Perfect! Would you like me to add **"${pendingTaskData.cleanText}"** as a task?`;
+        
+        if (pendingTaskData.deadline) {
+          const deadline = pendingTaskData.deadline;
+          const formattedDate = deadline.fullDate.toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+          });
+          suggestionText += `\n\n📅 **Due:** ${formattedDate}`;
+          suggestionText += `\n🔔 **I'll send you reminders at:** 5 min • Exact time`;
+        }
+        
+        suggestionText += `\n\n💬 **To start chatting naturally with me, use \`/conversate\`**`;
+        
+        await message.reply(suggestionText);
+        return;
+      } else if (isSimpleNo) {
+        console.log(`❌ User rejected original task with simple no`);
+        await message.reply('🍱 No problem! The task has been cancelled. Feel free to ask me anything else!');
+        client.pendingTasks.delete(message.author.id);
+        return;
       }
       
       // Check if user is providing additional context (not a new task)
@@ -502,7 +555,7 @@ client.on('messageCreate', async message => {
         console.log(`🔍 User providing additional context, not a new task`);
         
         // Ask user to clarify if they want to add this as a separate task or modify the existing one
-        await message.reply(`🍱 I see you're adding more information. Do you want me to:\n\n1️⃣ **Modify the existing task** "${pendingTaskData.cleanText}" with this additional info?\n2️⃣ **Create a separate new task** with "${message.content}"?\n\nJust say "modify" or "new task" to let me know!`);
+        await message.reply(`🍱 I see you're adding more information! Do you want me to:\n\n**"modify"** or **"yes"** - Add this info to your existing task: "${pendingTaskData.cleanText}"\n**"new"** or **"no"** - Create a separate task with: "${message.content}"\n\nJust say **"modify"**, **"yes"**, **"new"**, or **"no"** - I'll understand! 😊`);
         
         // Store the context for the next response
         client.pendingTasks.set(message.author.id, {
