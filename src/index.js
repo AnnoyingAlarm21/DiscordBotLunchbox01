@@ -449,9 +449,7 @@ client.on('messageCreate', async message => {
   
   const hasTaskKeywords = taskKeywords.some(keyword => messageContent.includes(keyword));
   
-  // Check if this is likely additional context rather than a new task
-  const contextIndicators = ['but', 'however', 'also', 'additionally', 'plus', 'because', 'since', 'while'];
-  const isLikelyContext = contextIndicators.some(indicator => messageContent.includes(indicator));
+  // Removed context filters - detect tasks more aggressively
   
   // Check if user is in conversation mode and has pending tasks
   const hasPendingTask = client.pendingTasks && client.pendingTasks.has(message.author.id);
@@ -463,8 +461,8 @@ client.on('messageCreate', async message => {
     return;
   }
   
-  // NEW: Smart task detection - only suggest tasks when it makes sense
-  if (hasTaskKeywords && !isLikelyContext) {
+  // NEW: Smart task detection - detect tasks more aggressively (removed filters)
+  if (hasTaskKeywords) {
     console.log(`🎯 Task detected from conversation: "${message.content}"`);
     
     // Process the task text to clean it up
